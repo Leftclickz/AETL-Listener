@@ -30,3 +30,6 @@
 *.exe
 *.out
 *.app
+/.vs/AETL-Listener/v16
+/EXE
+/x64

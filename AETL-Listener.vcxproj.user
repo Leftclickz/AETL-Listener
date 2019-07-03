@@ -5,11 +5,11 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LocalDebuggerCommandArguments>-o "C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\data\output" -ae "C:\Program Files\Adobe\Adobe After Effects CC 2018\Support Files\aerender.exe"</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-i "S:\projects" -ae "C:\Program Files\Adobe\Adobe After Effects CC 2018\Support Files\aerender.exe"</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LocalDebuggerCommandArguments>-o "C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\data\output" -ae "C:\Program Files\Adobe\Adobe After Effects CC 2018\Support Files\aerender.exe"</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-i "S:\projects" -ae "C:\Program Files\Adobe\Adobe After Effects CC 2018\Support Files\aerender.exe"</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
 </Project>
