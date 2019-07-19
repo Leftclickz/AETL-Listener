@@ -16,6 +16,9 @@
     <Filter Include="kgui">
       <UniqueIdentifier>{aba9d1c0-3240-4f53-92e7-c6b535a0a297}</UniqueIdentifier>
     </Filter>
+    <Filter Include="sqlite">
+      <UniqueIdentifier>{e7505ea1-c168-498a-ba00-eb6390c9cb5f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -24,10 +27,28 @@
     <ClCompile Include="kguithread.cpp">
       <Filter>kgui</Filter>
     </ClCompile>
+    <ClCompile Include="sqllite\sqlite3.c">
+      <Filter>sqlite</Filter>
+    </ClCompile>
+    <ClCompile Include="sqllite\SQL_Helpers.cpp">
+      <Filter>sqlite</Filter>
+    </ClCompile>
+    <ClCompile Include="Helpers.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="kguithread.h">
       <Filter>kgui</Filter>
+    </ClInclude>
+    <ClInclude Include="sqllite\SQL_Helpers.h">
+      <Filter>sqlite</Filter>
+    </ClInclude>
+    <ClInclude Include="sqllite\sqlite3.h">
+      <Filter>sqlite</Filter>
+    </ClInclude>
+    <ClInclude Include="Helpers.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

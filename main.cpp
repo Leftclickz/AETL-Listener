@@ -5,6 +5,8 @@
 #include <windows.h>
 #include <conio.h>
 #include "kguithread.h"
+#include "Helpers.h"
+#include "sqllite/SQL_Helpers.h"
 #include <fstream>
 
 #define SLEEP(_VAL) std::this_thread::sleep_for(std::chrono::milliseconds(_VAL))
@@ -21,19 +23,12 @@
 
 //Failed folder def
 #define FAIL_DIRECTORY "Failed"
-#define FAIL_FILE ".log"
 
 using namespace std;
 namespace fs = std::experimental::filesystem;
 
 //Our update loop
 void Update();
-
-//Replace an occurence with something else
-void FindAndReplaceAll(std::string& data, std::string toSearch, std::string replaceStr);
-
-//Get a datetime stamp
-const std::string CurrentDateTime();
 
 //Run a command
 std::string ExecuteConsoleCommand(std::string AbsEXEPath, std::string Args);
@@ -47,31 +42,23 @@ bool CheckToSeeIfHotFolderIsLocked();
 //Remove extra data
 void StripExtraData(string & Directory);
 
-//Check if a directory exists. Can create it if it doesn't exist.
-bool DirectoryExists(std::string FolderPath, bool CreateDirectoryIfDoesNotExist = true);
-
-//get our directory
-inline string GetAbsoluteDirectory(string Directory)
-{
-	return fs::absolute(Directory).string();
-}
-
 //create a log with the data of what happened on an unsuccessful render
 void CreateLog(string filepath, string& data);
 
 //Listen for a character input to exit
 void ListenForExit();
 
-//Import a bunch of files
-void RenameMultipleFilesToNewDirectory(vector<string> fileNames, string OldDirectory, string NewDirectory);
-
 namespace Dir
 {
 	string HotFolder = "";//the folder we watch
 	string RenderPath = "";//the path to adobe render exe
+	string DatabasePath = "";
+	string OutputFolder = "";
 }
 
 volatile bool complete = false;
+
+sqlite3* OUR_DATABASE;
 
 int main(int argc, char* argv[])
 {
@@ -80,7 +67,7 @@ int main(int argc, char* argv[])
 	cout << "Press Escape to initiate shutdown at any time." << endl << endl;
 
 	//there isnt enough args, get out
-	if (argc != 5)
+	if (argc != 9)
 	{
 		cout << "Not enough arguments to run program. Requires a hot folder and a render path.\n";
 		complete = true;
@@ -105,6 +92,24 @@ int main(int argc, char* argv[])
 				cout << "-ae flag found but no argument." << endl;
 				complete = true;
 			}
+		if (string(argv[i]) == "-db")
+			if (i + 1 < argc)
+				Dir::DatabasePath = string(argv[i + 1]);
+			else
+			{
+				cout << "-db flag found but no argument." << endl;
+				complete = true;
+			}
+
+		if (string(argv[i]) == "-o")
+			if (i + 1 < argc)
+				Dir::OutputFolder = string(argv[i + 1]);
+			else
+			{
+				cout << "-o flag found but no argument." << endl;
+				complete = true;
+			}
+
 	}
 
 	if (Dir::HotFolder == "")
@@ -118,12 +123,20 @@ int main(int argc, char* argv[])
 		complete = true;
 	}
 
+	if (SQL::SQL_LoadDatabase(&OUR_DATABASE, Dir::DatabasePath) == false)
+	{
+		cout << "Database failed to open" << endl;
+		complete = true;
+	}
+
 	//do some run-once stuff before looping forever
 	if (!complete)
 	{
 		//check folder arguments and adjust format
 		StripExtraData(Dir::HotFolder);
 		Dir::HotFolder = GetAbsoluteDirectory(Dir::HotFolder);
+		StripExtraData(Dir::OutputFolder);
+		Dir::OutputFolder = GetAbsoluteDirectory(Dir::OutputFolder);
 
 		//seed random time
 		srand((unsigned int)(time(0)));
@@ -178,23 +191,40 @@ void Update()
 		else if (projectName.find(".aep") == string::npos)
 			continue;
 
+		SQL::ProjectSQLData projectData = SQL::SQL_GetProjectBuildLog(OUR_DATABASE, projectName);
+		string dateUsedByActiveRenderLog;
+
 		//strip data to have ONLY the project name
 		FindAndReplaceAll(projectName, ".aep", "");
 		FindAndReplaceAll(projectName, Dir::HotFolder + "\\", "");
 
-		//Create an archive folder if it exists
-		DirectoryExists(Dir::HotFolder + "\\" + ARCHIVE_DIRECTORY + "\\" + projectName);
-		DirectoryExists(Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + projectName);
-		DirectoryExists(Dir::HotFolder + "\\" + FAIL_DIRECTORY + "\\" + projectName);
+		//if this happened it means there isnt a log entry for this project... we can still render it but we won't be able to log the data later and the ID might be messed up
+		bool addLogToSQLAfterRendering = true;
+		if (projectData.ProjectID == "")
+		{
+			projectData.ProjectID = projectName;
+			addLogToSQLAfterRendering = false;
+		}
+		else
+		{
+			//Add a log to the active rendering table notifying that we're starting a render
+			projectData.Directory = Dir::OutputFolder + "\\" + projectName + ".avi";
+			dateUsedByActiveRenderLog = SQL::SQL_AddActiveRenderLog(DATABASE_ACTIVE_LOG, projectData.ProjectID, projectData.ProjectType, projectData.ImageType, projectData.Directory, OUR_DATABASE);
+		}
+
+		//Create subfolders for this project if they arent already there
+		DirectoryExists(Dir::HotFolder + "\\" + ARCHIVE_DIRECTORY + "\\" + projectData.ProjectID);
+		DirectoryExists(Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + projectData.ProjectID);
+		DirectoryExists(Dir::HotFolder + "\\" + FAIL_DIRECTORY + "\\" + projectData.ProjectID);
 
 		//Create a stamped filename
 		string dateStamp = CurrentDateTime();
 		string lockedFileName = projectName + "_" + dateStamp + ".aep";
 
 		//create our new project directory and rename the file
-		string currentRenderingDirectory = Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + projectName + "\\" + dateStamp;
+		string currentRenderingDirectory = Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + projectData.ProjectID + "\\" + dateStamp;
 		DirectoryExists(currentRenderingDirectory);
-		fs::path newProjectPath = fs::absolute(Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + projectName + "\\" + dateStamp + "\\" + lockedFileName);
+		fs::path newProjectPath = fs::absolute(Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + projectData.ProjectID + "\\" + dateStamp + "\\" + lockedFileName);
 		fs::rename(projectPath, newProjectPath);
 		SLEEP(500);
 
@@ -225,11 +255,14 @@ void Update()
 
 		//Our folder we will create to archive everything after
 		string FolderToCreate;
+		string newActiveData;
 
 		//Render succeeded.
 		if (out.find("Finished composition") != string::npos && out.find("Unable to Render:") == string::npos)
 		{
-			FolderToCreate = Dir::HotFolder + "\\" + ARCHIVE_DIRECTORY + "\\" + projectName + "\\" + dateStamp;
+			FolderToCreate = Dir::HotFolder + "\\" + ARCHIVE_DIRECTORY + "\\" + projectData.ProjectID + "\\" + dateStamp;
+			projectData.Directory = Dir::OutputFolder + "\\" + projectName + ".avi";
+			newActiveData = "COMPLETE";
 
 			//Notify user the success is complete.
 			cout << "\nProject " << projectName << " rendered successfully.\n\n";
@@ -237,7 +270,9 @@ void Update()
 		//the process failed to read and didnt create the video.
 		else
 		{
-			FolderToCreate = Dir::HotFolder + "\\" + FAIL_DIRECTORY + "\\" + projectName + "\\" + dateStamp;
+			FolderToCreate = Dir::HotFolder + "\\" + FAIL_DIRECTORY + "\\" + projectData.ProjectID + "\\" + dateStamp;
+			projectData.Directory = "NULL";
+			newActiveData = "FAILED";
 
 			//Notify user the failure is complete.
 			cout << "\nProject " << projectName << " failed to render properly.\n\n";
@@ -248,43 +283,19 @@ void Update()
 		fs::rename(newProjectPath, fs::path(FolderToCreate + "\\" + lockedFileName));
 		CreateLog(FolderToCreate + "\\" + lockedFileName, out);
 
+		//add our log to the render list and adjust the active render log we input earlier to be finished
+		if (addLogToSQLAfterRendering == true)
+		{
+			SQL::SQL_AddObjectToTable(DATABASE_RENDER_LOG, projectData.ProjectID, projectData.ProjectType, projectData.ImageType, projectData.Directory, FolderToCreate, OUR_DATABASE);
+			SQL::SQL_AdjustActiveRenderInformation(DATABASE_ACTIVE_LOG, projectData.ProjectID, projectData.ProjectType, projectData.ImageType, dateUsedByActiveRenderLog, newActiveData, OUR_DATABASE);
+		}
+
 		//clean up adobes mess
 		RenameMultipleFilesToNewDirectory(aeLogs, currentRenderingDirectory + "\\" + lockedFileName + " Logs", FolderToCreate);
 		fs::remove_all(currentRenderingDirectory);
 
 		break;	
 	}
-}
-
-void FindAndReplaceAll(std::string & data, std::string toSearch, std::string replaceStr)
-{
-	// Get the first occurrence
-	size_t pos = data.find(toSearch);
-
-	// Repeat till end is reached
-	while (pos != std::string::npos)
-	{
-		// Replace this occurrence of Sub String
-		data.replace(pos, toSearch.size(), replaceStr);
-		// Get the next occurrence from the current position
-		pos = data.find(toSearch, pos + replaceStr.size());
-	}
-}
-
-const std::string CurrentDateTime()
-{
-	time_t     now = time(0);
-	struct tm  tstruct;
-	char       buf[80];
-	tstruct = *localtime(&now);
-
-	strftime(buf, sizeof(buf), "%Y-%m-%d.%X", &tstruct);
-
-	std::string data(buf);
-
-	FindAndReplaceAll(data, ":", ".");
-
-	return data;
 }
 
 std::string ExecuteConsoleCommand(std::string AbsEXEPath, std::string Args)
@@ -349,34 +360,6 @@ void StripExtraData(string & Directory)
 		Directory.pop_back();
 }
 
-bool DirectoryExists(std::string FolderPath, bool CreateDirectoryIfDoesNotExist)
-{
-	namespace fs = std::experimental::filesystem;
-	std::string directoryName = FolderPath;
-
-	if (!fs::is_directory(directoryName) || !fs::exists(directoryName)) // Check if src folder exists
-		if (CreateDirectoryIfDoesNotExist)
-		{
-			fs::create_directory(directoryName); // create src folder
-			return true;
-		}
-		else
-			return false;
-	else
-		return true;
-}
-
-void CreateLog(string filepath, string & data)
-{
-	ofstream output(filepath + FAIL_FILE);
-
-	if (output.is_open())
-	{
-		output << data << endl;
-		output.close();
-	}
-}
-
 void ListenForExit()
 {
 	while (true)
@@ -389,16 +372,5 @@ void ListenForExit()
 			complete = true;
 			break;
 		}
-	}
-}
-
-void RenameMultipleFilesToNewDirectory(vector<string> fileNames, string OldDirectory, string NewDirectory)
-{
-	for (unsigned int i = 0; i < fileNames.size(); i++)
-	{
-		fs::path oldFile = OldDirectory + "\\" + fileNames[i];
-		fs::path newFile = NewDirectory + "\\" + fileNames[i];
-
-		fs::rename(oldFile, newFile);
 	}
 }
