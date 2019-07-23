@@ -90,9 +90,11 @@ AttemptAddRenderLog:
 		char* err;
 		int rc = sqlite3_exec(db, pSQL.c_str(), _CALLBACK::SQL_GenericCallback, nullptr, &err);
 
-		if (rc == SQLITE_BUSY)
+		if (rc == SQLITE_BUSY || rc == SQLITE_LOCKED)
 		{
-			std::this_thread::sleep_for(std::chrono::milliseconds(2500));
+			cout << "Database is busy... attempting again..." << endl;
+			sqlite3_free(err);
+			std::this_thread::sleep_for(std::chrono::milliseconds(500));
 			goto AttemptAddActiveLog;
 		}
 		else if (rc != SQLITE_OK)

@@ -160,8 +160,8 @@ int main(int argc, char* argv[])
 		if (CheckToSeeIfHotFolderIsLocked() == false)
 			Update();
 
-		//sleep for 1 second + a random amount between 0-10 seconds
-		SLEEP(1000 + rand() % 10000);
+		//sleep for 1 second + a random amount between 0-60 seconds
+		SLEEP(1000 + rand() % 60000);
 	}
 
 #if (_DEBUG)
@@ -191,6 +191,7 @@ void Update()
 		else if (projectName.find(".aep") == string::npos)
 			continue;
 
+		//Get our project data from he build log
 		SQL::ProjectSQLData projectData = SQL::SQL_GetProjectBuildLog(OUR_DATABASE, projectName);
 		string dateUsedByActiveRenderLog;
 
@@ -198,12 +199,18 @@ void Update()
 		FindAndReplaceAll(projectName, ".aep", "");
 		FindAndReplaceAll(projectName, Dir::HotFolder + "\\", "");
 
+
+
 		//if this happened it means there isnt a log entry for this project... we can still render it but we won't be able to log the data later and the ID might be messed up
 		bool addLogToSQLAfterRendering = true;
 		if (projectData.ProjectID == "")
 		{
 			projectData.ProjectID = projectName;
+			//strip data to have ONLY the project name
+			FindAndReplaceAll(projectData.ProjectID, ".aep", "");
+			FindAndReplaceAll(projectData.ProjectID, Dir::HotFolder + "\\", "");
 			addLogToSQLAfterRendering = false;
+
 		}
 		else
 		{
@@ -211,6 +218,7 @@ void Update()
 			projectData.Directory = Dir::OutputFolder + "\\" + projectName + ".avi";
 			dateUsedByActiveRenderLog = SQL::SQL_AddActiveRenderLog(DATABASE_ACTIVE_LOG, projectData.ProjectID, projectData.ProjectType, projectData.ImageType, projectData.Directory, OUR_DATABASE);
 		}
+
 
 		//Create subfolders for this project if they arent already there
 		DirectoryExists(Dir::HotFolder + "\\" + ARCHIVE_DIRECTORY + "\\" + projectData.ProjectID);
@@ -344,7 +352,7 @@ bool CheckToSeeIfHotFolderIsLocked()
 
 	//check all files in the directory
 	if (isLocked)
-		cout << "Hot Folder is currently locked. Will try again in 10 seconds.\n";
+		cout << "Hot Folder is currently locked...\n";
 
 	return isLocked;
 }
