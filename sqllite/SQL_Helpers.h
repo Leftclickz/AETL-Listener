@@ -17,18 +17,20 @@ namespace SQL
 	struct ProjectSQLData
 	{
 		std::string ProjectID = "";
+		std::string LocationID = "";
 		std::string ProjectType = "";
 		std::string ImageType = "";
 		std::string Directory = "";
 	};
 
 	//Add objects to the SQL table. Use overloads.
-	void SQL_AddObjectToTable(string TableID, string projID, string projType, string imageType, string directory, string archive, struct sqlite3* db);//Add a render log to the table
+	void SQL_AddObjectToTable(string TableID, ProjectSQLData data, string archive, struct sqlite3* db);//Add a render log to the table
 
-	//Add objects to the SQL table. Use overloads.
-	string SQL_AddActiveRenderLog(string TableID, string projID, string projType, string imageType, string directory, struct sqlite3* db);//Add an active render log to the table
+	//Add rendering info for a project render
+	string SQL_AddActiveRenderLog(string TableID, ProjectSQLData data, struct sqlite3* db);//Add an active render log to the table
 
-	bool SQL_AdjustActiveRenderInformation(string TableID, string projID, string projType, string imageType, string DateTime, string newFinished, struct sqlite3* db);//change the active log
+	//Adjust rendering info for a project render
+	bool SQL_AdjustActiveRenderInformation(string TableID, ProjectSQLData data, string DateTime, string newFinished, struct sqlite3* db);//change the active log
 
 	//Check if an object exists within a table
 	bool SQL_ExistsWithinTable(string TableID, string ProjectID, string ImagePath, struct sqlite3* db);

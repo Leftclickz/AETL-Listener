@@ -34,7 +34,7 @@ namespace SQL
 
 	struct ProjectSQLData SQL_GetProjectBuildLog(struct sqlite3* db, std::string directory)
 	{
-		string pSQL = "select ProjectType, ImageType, ProjectID from " + string(DATABASE_PROJECT_LOG) + " where Directory=\"" + directory + "\";";
+		string pSQL = "select ProjectType, ImageType, ProjectID, LocationID from " + string(DATABASE_PROJECT_LOG) + " where Directory=\"" + directory + "\";";
 
 		ProjectSQLData data;
 		char* err;
@@ -49,22 +49,24 @@ namespace SQL
 		return data;
 	}
 
-	void SQL_AddObjectToTable(string TableID, string projID, string projType, string imageType, string directory, string archive, struct sqlite3* db)
+	void SQL_AddObjectToTable(string TableID, ProjectSQLData data, string archive, struct sqlite3* db)
 	{
 AttemptAddRenderLog:
-		string pSQL = "insert into " + TableID + " (ProjectID, CreatedAt, Directory, ProjectArchive, ProjectType, ImageType) values ('"
-			+ projID + "', '"
+		string pSQL = "insert into " + TableID + " (ProjectID, LocationID, CreatedAt, Directory, ProjectArchive, ProjectType, ImageType) values ('"
+			+ data.ProjectID + "', '"
+			+ data.LocationID + "', '"
 			+ CurrentDateTime() + "', '"
-			+ directory + "', '"
+			+ data.Directory + "', '"
 			+ archive + "', '"
-			+ projType + "', '"
-			+ imageType + "')";
+			+ data.ProjectType + "', '"
+			+ data.ImageType + "')";
 
 		char* err;
 		int rc = sqlite3_exec(db, pSQL.c_str(), _CALLBACK::SQL_GenericCallback, nullptr, &err);
 
-		if (rc == SQLITE_BUSY)
+		if (rc == SQLITE_BUSY || rc == SQLITE_LOCKED)
 		{
+			sqlite3_free(err);
 			std::this_thread::sleep_for(std::chrono::milliseconds(2500));
 			goto AttemptAddRenderLog;
 		}
@@ -75,16 +77,17 @@ AttemptAddRenderLog:
 		}
 	}
 
-	string SQL_AddActiveRenderLog(string TableID, string projID, string projType, string imageType, string directory, struct sqlite3* db)
+	string SQL_AddActiveRenderLog(string TableID, ProjectSQLData data, struct sqlite3* db)
 	{
 	AttemptAddActiveLog:
 		string date = CurrentDateTime();
-		string pSQL = "insert into " + TableID + " (ProjectID, CreatedAt, Directory, ProjectType, ImageType, Status) values ('"
-			+ projID + "', '"
+		string pSQL = "insert into " + TableID + " (ProjectID, LocationID, CreatedAt, Directory, ProjectType, ImageType, Status) values ('"
+			+ data.ProjectID + "', '"
+			+ data.LocationID + "', '"
 			+ date + "', '"
-			+ directory + "', '"
-			+ projType + "', '"
-			+ imageType + "', '"
+			+ data.Directory + "', '"
+			+ data.ProjectType + "', '"
+			+ data.ImageType + "', '"
 			+ "RENDERING" + "')";
 
 		char* err;
@@ -106,21 +109,23 @@ AttemptAddRenderLog:
 		return date;
 	}
 
-	bool SQL_AdjustActiveRenderInformation(string TableID, string projID, string projType, string imageType, string DateTime, string newFinished, struct sqlite3* db)
+	bool SQL_AdjustActiveRenderInformation(string TableID, ProjectSQLData data, string DateTime, string newFinished, struct sqlite3* db)
 	{
 AttemptAdjustInfo:
 		string pSQL = "UPDATE " + TableID + " SET Status='" + newFinished + "' WHERE "
-			+ "ProjectID=\"" + projID + "\" AND "
-			+ "ProjectType=\"" + projType + "\" AND "
-			+ "ImageType=\"" + imageType + "\" AND "
+			+ "ProjectID=\"" + data.ProjectID + "\" AND "
+			+ "LocationID=\"" + data.LocationID + "\" AND "
+			+ "ProjectType=\"" + data.ProjectType + "\" AND "
+			+ "ImageType=\"" + data.ImageType + "\" AND "
 			+ "CreatedAt=\"" + DateTime + "\""
 			+ ";";
 
 		char* err;
 		int rc = sqlite3_exec(db, pSQL.c_str(), _CALLBACK::SQL_GenericCallback, nullptr, &err);
 
-		if (rc == SQLITE_BUSY)
+		if (rc == SQLITE_BUSY || rc == SQLITE_LOCKED)
 		{
+			sqlite3_free(err);
 			std::this_thread::sleep_for(std::chrono::milliseconds(2500));
 			goto AttemptAdjustInfo;
 		}
@@ -228,6 +233,8 @@ AttemptAdjustInfo:
 					data->ImageType = argv[i];
 				else if (col == "ProjectID")
 					data->ProjectID = argv[i];
+				else if (col == "LocationID")
+					data->LocationID = argv[i];
 
 			}
 

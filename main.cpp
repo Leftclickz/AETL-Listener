@@ -203,12 +203,12 @@ void Update()
 
 		//if this happened it means there isnt a log entry for this project... we can still render it but we won't be able to log the data later and the ID might be messed up
 		bool addLogToSQLAfterRendering = true;
-		if (projectData.ProjectID == "")
+		if (projectData.LocationID == "")
 		{
-			projectData.ProjectID = projectName;
+			projectData.LocationID = projectName;
 			//strip data to have ONLY the project name
-			FindAndReplaceAll(projectData.ProjectID, ".aep", "");
-			FindAndReplaceAll(projectData.ProjectID, Dir::HotFolder + "\\", "");
+			FindAndReplaceAll(projectData.LocationID, ".aep", "");
+			FindAndReplaceAll(projectData.LocationID, Dir::HotFolder + "\\", "");
 			addLogToSQLAfterRendering = false;
 
 		}
@@ -216,23 +216,23 @@ void Update()
 		{
 			//Add a log to the active rendering table notifying that we're starting a render
 			projectData.Directory = Dir::OutputFolder + "\\" + projectName + ".avi";
-			dateUsedByActiveRenderLog = SQL::SQL_AddActiveRenderLog(DATABASE_ACTIVE_LOG, projectData.ProjectID, projectData.ProjectType, projectData.ImageType, projectData.Directory, OUR_DATABASE);
+			dateUsedByActiveRenderLog = SQL::SQL_AddActiveRenderLog(DATABASE_ACTIVE_LOG, projectData, OUR_DATABASE);
 		}
 
 
 		//Create subfolders for this project if they arent already there
-		DirectoryExists(Dir::HotFolder + "\\" + ARCHIVE_DIRECTORY + "\\" + projectData.ProjectID);
-		DirectoryExists(Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + projectData.ProjectID);
-		DirectoryExists(Dir::HotFolder + "\\" + FAIL_DIRECTORY + "\\" + projectData.ProjectID);
+		DirectoryExists(Dir::HotFolder + "\\" + ARCHIVE_DIRECTORY + "\\" + projectData.LocationID);
+		DirectoryExists(Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + projectData.LocationID);
+		DirectoryExists(Dir::HotFolder + "\\" + FAIL_DIRECTORY + "\\" + projectData.LocationID);
 
 		//Create a stamped filename
 		string dateStamp = CurrentDateTime();
 		string lockedFileName = projectName + "_" + dateStamp + ".aep";
 
 		//create our new project directory and rename the file
-		string currentRenderingDirectory = Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + projectData.ProjectID + "\\" + dateStamp;
+		string currentRenderingDirectory = Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + projectData.LocationID + "\\" + dateStamp;
 		DirectoryExists(currentRenderingDirectory);
-		fs::path newProjectPath = fs::absolute(Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + projectData.ProjectID + "\\" + dateStamp + "\\" + lockedFileName);
+		fs::path newProjectPath = fs::absolute(Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + projectData.LocationID + "\\" + dateStamp + "\\" + lockedFileName);
 		fs::rename(projectPath, newProjectPath);
 		SLEEP(500);
 
@@ -268,7 +268,7 @@ void Update()
 		//Render succeeded.
 		if (out.find("Finished composition") != string::npos && out.find("Unable to Render:") == string::npos)
 		{
-			FolderToCreate = Dir::HotFolder + "\\" + ARCHIVE_DIRECTORY + "\\" + projectData.ProjectID + "\\" + dateStamp;
+			FolderToCreate = Dir::HotFolder + "\\" + ARCHIVE_DIRECTORY + "\\" + projectData.LocationID + "\\" + dateStamp;
 			projectData.Directory = Dir::OutputFolder + "\\" + projectName + ".avi";
 			newActiveData = "COMPLETE";
 
@@ -278,7 +278,7 @@ void Update()
 		//the process failed to read and didnt create the video.
 		else
 		{
-			FolderToCreate = Dir::HotFolder + "\\" + FAIL_DIRECTORY + "\\" + projectData.ProjectID + "\\" + dateStamp;
+			FolderToCreate = Dir::HotFolder + "\\" + FAIL_DIRECTORY + "\\" + projectData.LocationID + "\\" + dateStamp;
 			projectData.Directory = "NULL";
 			newActiveData = "FAILED";
 
@@ -294,8 +294,8 @@ void Update()
 		//add our log to the render list and adjust the active render log we input earlier to be finished
 		if (addLogToSQLAfterRendering == true)
 		{
-			SQL::SQL_AddObjectToTable(DATABASE_RENDER_LOG, projectData.ProjectID, projectData.ProjectType, projectData.ImageType, projectData.Directory, FolderToCreate, OUR_DATABASE);
-			SQL::SQL_AdjustActiveRenderInformation(DATABASE_ACTIVE_LOG, projectData.ProjectID, projectData.ProjectType, projectData.ImageType, dateUsedByActiveRenderLog, newActiveData, OUR_DATABASE);
+			SQL::SQL_AddObjectToTable(DATABASE_RENDER_LOG, projectData, FolderToCreate, OUR_DATABASE);
+			SQL::SQL_AdjustActiveRenderInformation(DATABASE_ACTIVE_LOG, projectData, dateUsedByActiveRenderLog, newActiveData, OUR_DATABASE);
 		}
 
 		//clean up adobes mess
