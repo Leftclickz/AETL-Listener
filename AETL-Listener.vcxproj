@@ -135,6 +135,7 @@
   <ItemGroup>
     <ClCompile Include="Helpers.cpp" />
     <ClCompile Include="kguithread.cpp" />
+    <ClCompile Include="LogFile.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="sqllite\sqlite3.c" />
     <ClCompile Include="sqllite\SQL_Helpers.cpp" />
@@ -142,6 +143,7 @@
   <ItemGroup>
     <ClInclude Include="Helpers.h" />
     <ClInclude Include="kguithread.h" />
+    <ClInclude Include="LogFile.h" />
     <ClInclude Include="sqllite\sqlite3.h" />
     <ClInclude Include="sqllite\SQL_Helpers.h" />
   </ItemGroup>

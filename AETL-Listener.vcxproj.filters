@@ -19,6 +19,9 @@
     <Filter Include="sqlite">
       <UniqueIdentifier>{e7505ea1-c168-498a-ba00-eb6390c9cb5f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="LogFile">
+      <UniqueIdentifier>{011ce2f6-654a-41bc-93df-22ea70d11c9f}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -36,6 +39,9 @@
     <ClCompile Include="Helpers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="LogFile.cpp">
+      <Filter>LogFile</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="kguithread.h">
@@ -49,6 +55,9 @@
     </ClInclude>
     <ClInclude Include="Helpers.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="LogFile.h">
+      <Filter>LogFile</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

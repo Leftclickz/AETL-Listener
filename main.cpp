@@ -1,75 +1,44 @@
-#include <thread>
-#include <filesystem>
-#include <string>
-#include <iostream>
 #include <windows.h>
 #include <conio.h>
 #include "kguithread.h"
 #include "Helpers.h"
 #include "sqllite/SQL_Helpers.h"
 #include <fstream>
+#include "LogFile.h"
 
-#define SLEEP(_VAL) std::this_thread::sleep_for(std::chrono::milliseconds(_VAL))
 #define RENDER(_PROJECT) "-project \"" + _PROJECT + "\""
 
-//listener file def
-#define LISTENER_FILE_NAME string("_DO_NOT_READ_")
-
-//Archive folder def
-#define ARCHIVE_DIRECTORY "Archive"
-
-//Active rendering folder ref
-#define ACTIVE_RENDER_DIECTORY "Rendering"
-
-//Failed folder def
-#define FAIL_DIRECTORY "Failed"
+#define AETL_VERSION "0.9a"
 
 using namespace std;
 namespace fs = std::experimental::filesystem;
+using namespace UNSAFE;
 
 //Our update loop
 void Update();
 
-//Run a command
-std::string ExecuteConsoleCommand(std::string AbsEXEPath, std::string Args);
-
-//Execute a process
-bool StartProcess(void* pWindow, const char* pOperation, const char* pFile, const char* pParameters, const char* pDirectory);
-
 //Check if we're allowed to work
 bool CheckToSeeIfHotFolderIsLocked();
-
-//Remove extra data
-void StripExtraData(string & Directory);
-
-//create a log with the data of what happened on an unsuccessful render
-void CreateLog(string filepath, string& data);
 
 //Listen for a character input to exit
 void ListenForExit();
 
-namespace Dir
-{
-	string HotFolder = "";//the folder we watch
-	string RenderPath = "";//the path to adobe render exe
-	string DatabasePath = "";
-	string OutputFolder = "";
-}
-
 volatile bool complete = false;
-
-sqlite3* OUR_DATABASE;
 
 int main(int argc, char* argv[])
 {
 	//greeting
 	cout << " -- AETL-Listener -- " << endl;
+	cout << "VERSION: " << AETL_VERSION << endl;
 	cout << "Press Escape to initiate shutdown at any time." << endl << endl;
 
+	LogFile::BeginLogging();
+
 	//there isnt enough args, get out
-	if (argc != 9)
+	if (argc != 11)
 	{
-		cout << "Not enough arguments to run program. Requires a hot folder and a render path.\n";
+		LogFile::WriteToLog("Argument count not correct. " + to_string(argc) + " found. Expected 11.");
+		cout << "Argument count not correct.\n";
 		complete = true;
 	}
 
@@ -86,7 +55,21 @@ int main(int argc, char* argv[])
 			}
 		if (string(argv[i]) == "-ae")
 			if (i + 1 < argc)
+			{
 				Dir::RenderPath = string(argv[i + 1]);
+
+				//get our version. If this find fails then the path is messed up anyway so lets get out.
+				string adobeVersion = Dir::RenderPath.substr(Dir::RenderPath.find("Adobe After Effects CC "), 27);
+
+				if (adobeVersion == "")
+				{
+					cout << "Adobe path given is incorrect. Expected C:\\Program Files\\Adobe\\Adobe After Effects CC XXXX\\Support Files\\aerender.exe where XXXX is the version." << endl
+						<< "Please locate your installation and rerun program with a correct path to it." << endl;
+					complete = true;
+				}
+
+				Dir::ADOBE_VERSION = atoi(adobeVersion.substr(adobeVersion.size() - 4).c_str());
+			}
 			else
 			{
 				cout << "-ae flag found but no argument." << endl;
@@ -110,7 +93,17 @@ int main(int argc, char* argv[])
 				complete = true;
 			}
 
+		if (string(argv[i]) == "-c")
+			if (i + 1 < argc)
+				Dir::CopyFolder = string(argv[i + 1]);
+			else
+			{
+				cout << "-c flag found but no argument." << endl;
+				complete = true;
+			}
+
 	}
+
 
 	if (Dir::HotFolder == "")
 	{
@@ -123,29 +116,16 @@ int main(int argc, char* argv[])
 		complete = true;
 	}
 
-	if (SQL::SQL_LoadDatabase(&OUR_DATABASE, Dir::DatabasePath) == false)
+	if (SQL::SQL_LoadDatabase(&Project::OUR_DATABASE, Dir::DatabasePath) == false)
 	{
 		cout << "Database failed to open" << endl;
+		LogFile::WriteToLog("Database failed to open");
 		complete = true;
 	}
 
 	//do some run-once stuff before looping forever
 	if (!complete)
-	{
-		//check folder arguments and adjust format
-		StripExtraData(Dir::HotFolder);
-		Dir::HotFolder = GetAbsoluteDirectory(Dir::HotFolder);
-		StripExtraData(Dir::OutputFolder);
-		Dir::OutputFolder = GetAbsoluteDirectory(Dir::OutputFolder);
-
-		//seed random time
-		srand((unsigned int)(time(0)));
-
-		//create an archive folder if it doesnt exist
-		DirectoryExists(Dir::HotFolder + "\\" + ARCHIVE_DIRECTORY);
-		DirectoryExists(Dir::HotFolder + "\\" + FAIL_DIRECTORY);
-		DirectoryExists(Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY);
-	}
+		EnsureSafeExecution(RunOnceProgramSetup);
 
 #if (_DEBUG)
 	std::thread InputListener(ListenForExit);
@@ -154,15 +134,25 @@ int main(int argc, char* argv[])
 	InputListener->detach();
 #endif
 
+	LogFile::WriteToLog("Beginning runtime loop.");
+
 	while (!complete)
 	{
-		//only update if the lock isnt present on the folder
-		if (CheckToSeeIfHotFolderIsLocked() == false)
-			Update();
+		//check that the drives are accessible
+		if (DrivesAreAccessible() == true)
+		{
+			//only update if the lock isnt present on the folder
+			if (CheckToSeeIfHotFolderIsLocked() == false)
+				Update();
+		}
+		else
+			LogFile::WriteToLog("Drives inaccessible.");
 
 		//sleep for 1 second + a random amount between 0-60 seconds
 		SLEEP(1000 + rand() % 60000);
 	}
+
+	LogFile::WriteToLog("Ending runtime loop.");
 
 #if (_DEBUG)
 	InputListener.join();
@@ -170,6 +160,7 @@ int main(int argc, char* argv[])
 	delete InputListener;
 #endif
 	cout << endl << "Program has been shut down." << endl;
+	LogFile::EndLogging();
 	system("PAUSE");
 	return 0;
 }
@@ -177,173 +168,241 @@ int main(int argc, char* argv[])
 
 void Update()
 {
+
+	//safely create a directory iterator
+	fs::directory_iterator directoryIterator;
+	EnsureSafeExecution(GetDirectoryIterator, &Dir::HotFolder, &directoryIterator);
+
 	//find a project file 
-	for (const auto& entry : fs::directory_iterator(Dir::HotFolder))
+	for (const auto& entry : directoryIterator)
 	{
 		//our potential project
 		fs::path projectPath = entry.path();
-		string projectName = projectPath.string();
+		Project::PROJECT_NAME = projectPath.string();
 
 		//if it's a directory ignore it
-		if (fs::is_directory(entry))
+		bool val = true;
+		EnsureSafeExecution(IsDirectoryUnsafe, (void*)& entry, &val);
+		if (val == true)
 			continue;
 		//If a non-project file is within, ignore it
-		else if (projectName.find(".aep") == string::npos)
+		else if (Project::PROJECT_NAME.find(".aep") == string::npos)
 			continue;
 
+		LogFile::WriteToLog("---------- START OF RENDER SEQUENCE ----------");
+		LogFile::WriteToLog("Project file found: " + Project::PROJECT_NAME);
+
 		//Get our project data from he build log
-		SQL::ProjectSQLData projectData = SQL::SQL_GetProjectBuildLog(OUR_DATABASE, projectName);
-		string dateUsedByActiveRenderLog;
+		LogFile::WriteToLog("Collecting Project Build Log from SQLite...");
+		EnsureSafeExecution(FetchSQLBuildLogUnsafe);
+		LogFile::WriteToLog("Project Build Log found.");
 
 		//strip data to have ONLY the project name
-		FindAndReplaceAll(projectName, ".aep", "");
-		FindAndReplaceAll(projectName, Dir::HotFolder + "\\", "");
+		FindAndReplaceAll(Project::PROJECT_NAME, ".aep", "");
+		FindAndReplaceAll(Project::PROJECT_NAME, Dir::HotFolder + "\\", "");
 
+		LogFile::WriteToLog("Project data: "
+			+ string("\n\t\t\tProjectID - ") + Project::SQL_DATA.ProjectID
+			+ string("\n\t\t\tLocationID - ") + Project::SQL_DATA.LocationID
+			+ string("\n\t\t\tProjectType - ") + Project::SQL_DATA.ProjectType
+			+ string("\n\t\t\tImageType - ") + Project::SQL_DATA.ImageType);
 
-
-		//if this happened it means there isnt a log entry for this project... we can still render it but we won't be able to log the data later and the ID might be messed up
-		bool addLogToSQLAfterRendering = true;
-		if (projectData.LocationID == "")
+		//if this happened it means there isnt a log entry or something happened, either way get out of here.
+		if (Project::SQL_DATA.LocationID == "")
 		{
-			projectData.LocationID = projectName;
-			//strip data to have ONLY the project name
-			FindAndReplaceAll(projectData.LocationID, ".aep", "");
-			FindAndReplaceAll(projectData.LocationID, Dir::HotFolder + "\\", "");
-			addLogToSQLAfterRendering = false;
+			LogFile::WriteToLog("LocationID is blank. Leaving render sequence.");
+			break;
+		}
 
+		//Add a log to the active rendering table notifying that we're starting a render
+		Project::SQL_DATA.Directory = Dir::OutputFolder + "\\" + Project::PROJECT_NAME + ".avi";
+		LogFile::WriteToLog("Setting render directory: " + Project::SQL_DATA.Directory);
+
+		//check to see if this project is a retry (a different node failed rendering this)
+		EnsureSafeExecution(CollectActiveRenderingDataUnsafe);
+
+		
+		if (Project::RENDER_DATA.Status == "RETRY")
+			//it's a retry so adjust the data entry for this project accordingly and notify user
+		{
+			cout << "Project " << Project::PROJECT_NAME << " is re-attempting rendering. \nRetry count: " << Project::RENDER_DATA.Retries << "\nRetries remaining: " << 4 - Project::RENDER_DATA.Retries << endl;
+			LogFile::WriteToLog("Project " + Project::PROJECT_NAME + ": attempting retry of render process. Retry count: " 
+				+ to_string(Project::RENDER_DATA.Retries) + ". Retries remaining: " + to_string(4 - Project::RENDER_DATA.Retries));
+			LogFile::WriteToLog("Project " + Project::PROJECT_NAME + ": Adjusting project data entry - Status from RETRY to RENDERING.");
+			Project::RENDER_DATA.Status = "RENDERING";
+
+			//Notify the SQLite database we are attempting a retry
+			EnsureSafeExecution(AdjustActiveRenderingDataUnsafe);
 		}
 		else
+			//it's a fresh project. Build the RENDER_DATA using SQL_DATA and create a new entry in the database.
 		{
-			//Add a log to the active rendering table notifying that we're starting a render
-			projectData.Directory = Dir::OutputFolder + "\\" + projectName + ".avi";
-			dateUsedByActiveRenderLog = SQL::SQL_AddActiveRenderLog(DATABASE_ACTIVE_LOG, projectData, OUR_DATABASE);
+			cout << "Project " << Project::PROJECT_NAME << " is a new project. Attempting first render." << endl;
+ 			LogFile::WriteToLog("Project " + Project::PROJECT_NAME + ": Adding Active Render log to SQLite database.");
+			Project::RENDER_DATA.ImageType = Project::SQL_DATA.ImageType;
+			Project::RENDER_DATA.LocationID = Project::SQL_DATA.LocationID;
+			Project::RENDER_DATA.ProjectID = Project::SQL_DATA.ProjectID;
+			Project::RENDER_DATA.ProjectType = Project::SQL_DATA.ProjectType;
+			Project::RENDER_DATA.Retries = 0;
+			Project::RENDER_DATA.Directory = Project::SQL_DATA.Directory;
+			Project::RENDER_DATA.Status = "RENDERING";
+
+			//Add a new entry to the SQLite database
+			EnsureSafeExecution(AddActiveRenderingDataUnsafe);
 		}
 
-
 		//Create subfolders for this project if they arent already there
-		DirectoryExists(Dir::HotFolder + "\\" + ARCHIVE_DIRECTORY + "\\" + projectData.LocationID);
-		DirectoryExists(Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + projectData.LocationID);
-		DirectoryExists(Dir::HotFolder + "\\" + FAIL_DIRECTORY + "\\" + projectData.LocationID);
+		LogFile::WriteToLog("Creating project subfolders.");
+		{
+			string dir = Dir::HotFolder + "\\" + ARCHIVE_DIRECTORY + "\\" + Project::SQL_DATA.LocationID;
+			EnsureSafeExecution(CreateDirectoryUnsafe, &dir);
+			dir = Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + Project::SQL_DATA.LocationID;
+			EnsureSafeExecution(CreateDirectoryUnsafe, &dir);
+			dir = Dir::HotFolder + "\\" + FAIL_DIRECTORY + "\\" + Project::SQL_DATA.LocationID;
+			EnsureSafeExecution(CreateDirectoryUnsafe, &dir);
+		}
 
 		//Create a stamped filename
 		string dateStamp = CurrentDateTime();
-		string lockedFileName = projectName + "_" + dateStamp + ".aep";
+		LogFile::WriteToLog("Datestamp used for this render: " + dateStamp);
+		string lockedFileName = Project::PROJECT_NAME + "_" + dateStamp + ".aep";
+		LogFile::WriteToLog("Locked filename: " + lockedFileName);
 
 		//create our new project directory and rename the file
-		string currentRenderingDirectory = Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + projectData.LocationID + "\\" + dateStamp;
-		DirectoryExists(currentRenderingDirectory);
-		fs::path newProjectPath = fs::absolute(Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + projectData.LocationID + "\\" + dateStamp + "\\" + lockedFileName);
-		fs::rename(projectPath, newProjectPath);
-		SLEEP(500);
-
+		string currentRenderingDirectory = Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + Project::SQL_DATA.LocationID + "\\" + dateStamp;
+		LogFile::WriteToLog("Creating directory : " + currentRenderingDirectory);
+		EnsureSafeExecution(CreateDirectoryUnsafe, &currentRenderingDirectory);
+		fs::path newProjectPath = fs::absolute(Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + Project::SQL_DATA.LocationID + "\\" + dateStamp + "\\" + lockedFileName);
+		LogFile::WriteToLog("Moving project file from " + projectPath.string() + " to " + newProjectPath.string());
+		EnsureSafeExecution(RenameFileUnsafe, &projectPath, &newProjectPath);
+		
 		//notify the render process
-		cout << "Project " << projectName << " now being rendered. Locking....\n\n";
+		cout << "Project " << Project::PROJECT_NAME << " now being rendered. Locking....\n\n";
+		LogFile::WriteToLog("Project " + Project::PROJECT_NAME + " is now being rendered.");
 
 		//render the video
-		kGUICallThread ProcessHandle;
 		std::string command = Dir::RenderPath + " " + RENDER(newProjectPath.string());
-		ProcessHandle.Start(command.c_str(), CALLTHREAD_READ);
+		std::string out;
+		LogFile::WriteToLog("Executing command: " + command);
+		EnsureSafeExecution(AttemptVideoRender, &command, &out);
 
 		//sleep for a few seconds after exiting to ensure all files are written
 		SLEEP(3000);
-
-		//get the render output
-		std::string out = *ProcessHandle.GetString();
-		cout << out;
+		LogFile::WriteToLog("Rendering completed.");
 
 		//copy log names to vector to move to a different location
 		vector<string> aeLogs;
-		for (const auto& logs : fs::directory_iterator(newProjectPath.string() + " Logs"))
+		if (Dir::ADOBE_VERSION > 2018)
 		{
-			string filename = logs.path().string();
-			FindAndReplaceAll(filename, newProjectPath.string(), "");
-			FindAndReplaceAll(filename, " Logs\\", "");
-			aeLogs.push_back(filename);
+			LogFile::WriteToLog("Copying AE log names to be moved later.");
+			{
+				fs::directory_iterator it;
+				string path = newProjectPath.string() + " Logs";
+				EnsureSafeExecution(GetDirectoryIterator, &path, &it);
+				for (const auto& logs : it)
+				{
+					string filename = logs.path().string();
+					FindAndReplaceAll(filename, newProjectPath.string(), "");
+					FindAndReplaceAll(filename, " Logs\\", "");
+					aeLogs.push_back(filename);
+				}
+			}
 		}
-
 		//Our folder we will create to archive everything after
 		string FolderToCreate;
-		string newActiveData;
 
 		//Render succeeded.
-		if (out.find("Finished composition") != string::npos && out.find("Unable to Render:") == string::npos)
+		bool renderResult = out.find("Finished composition") != string::npos && out.find("Unable to Render:") == string::npos;
+		if (renderResult == true)
 		{
-			FolderToCreate = Dir::HotFolder + "\\" + ARCHIVE_DIRECTORY + "\\" + projectData.LocationID + "\\" + dateStamp;
-			projectData.Directory = Dir::OutputFolder + "\\" + projectName + ".avi";
-			newActiveData = "COMPLETE";
+			LogFile::WriteToLog("Render successful.");
+			FolderToCreate = Dir::HotFolder + "\\" + ARCHIVE_DIRECTORY + "\\" + Project::SQL_DATA.LocationID + "\\" + dateStamp;
+			Project::SQL_DATA.Directory = Dir::OutputFolder + "\\" + Project::PROJECT_NAME + ".avi";
+			Project::RENDER_DATA.Status = "COMPLETE";
 
 			//Notify user the success is complete.
-			cout << "\nProject " << projectName << " rendered successfully.\n\n";
+			cout << "\nProject " << Project::PROJECT_NAME << " rendered successfully.\n\n";
+
+			//Move the AVI file to the encoder
+			LogFile::WriteToLog("Moving AVI file to AETL-Encoder hot folder...");
+			EnsureSafeExecution(AviCleanupUnsafe, &Project::PROJECT_NAME, &renderResult);
+
+
 		}
 		//the process failed to read and didnt create the video.
 		else
 		{
-			FolderToCreate = Dir::HotFolder + "\\" + FAIL_DIRECTORY + "\\" + projectData.LocationID + "\\" + dateStamp;
-			projectData.Directory = "NULL";
-			newActiveData = "FAILED";
+			LogFile::WriteToLog("Render unsuccessful. Check the render output log for more information.");
+			FolderToCreate = Dir::HotFolder + "\\" + FAIL_DIRECTORY + "\\" + Project::SQL_DATA.LocationID + "\\" + dateStamp;
+			Project::SQL_DATA.Directory = "NULL";
+
+			if (Project::RENDER_DATA.Retries >= 3)
+				Project::RENDER_DATA.Status = "FAILED";
+			else
+			{
+				Project::RENDER_DATA.Status = "RETRY";
+				Project::RENDER_DATA.Retries++;
+			}
 
 			//Notify user the failure is complete.
-			cout << "\nProject " << projectName << " failed to render properly.\n\n";
+			cout << "\nProject " << Project::PROJECT_NAME << " failed to render properly.\n\n";
+
+			//Delete the AVI file if there is anything to cleanup
+			LogFile::WriteToLog("Deleting AVI file...");
+			EnsureSafeExecution(AviCleanupUnsafe, &Project::PROJECT_NAME, &renderResult);
 		}
+
+		Project::RENDER_DATA.Directory = Project::SQL_DATA.Directory;
+		//Add host name to the output log
+		LogFile::WriteToLog("Adding host name to output log.");
+		AppendHostName(out);
 
 		//Store all the data in either archive or fail based on log info
-		DirectoryExists(FolderToCreate);
-		fs::rename(newProjectPath, fs::path(FolderToCreate + "\\" + lockedFileName));
-		CreateLog(FolderToCreate + "\\" + lockedFileName, out);
-
-		//add our log to the render list and adjust the active render log we input earlier to be finished
-		if (addLogToSQLAfterRendering == true)
+		if (Project::RENDER_DATA.Status != "RETRY")
 		{
-			SQL::SQL_AddObjectToTable(DATABASE_RENDER_LOG, projectData, FolderToCreate, OUR_DATABASE);
-			SQL::SQL_AdjustActiveRenderInformation(DATABASE_ACTIVE_LOG, projectData, dateUsedByActiveRenderLog, newActiveData, OUR_DATABASE);
+			LogFile::WriteToLog("Creating post-render folder " + FolderToCreate);
+			EnsureSafeExecution(CreateDirectoryUnsafe, &FolderToCreate);
+			LogFile::WriteToLog("Moving project file to post-render folder.");
+			fs::path returnPath = fs::path(FolderToCreate + "\\" + lockedFileName);
+
+			EnsureSafeExecution(RenameFileUnsafe,&newProjectPath, &returnPath);
+			LogFile::WriteToLog("Creating output log.");
+			string outputLogDirectory = FolderToCreate + "\\" + lockedFileName;
+			EnsureSafeExecution(CreateOutputLogUnsafe, &outputLogDirectory, &out);
+			LogFile::WriteToLog("Output log created.");
+
+			//clean up adobes mess
+			LogFile::WriteToLog("Moving Adobe logs to post-render folder (ONLY FOR VERSIONS 2019 OR LATER).");
+			for (unsigned int i = 0; i < aeLogs.size(); i++)
+			{
+				std::experimental::filesystem::path oldFile = currentRenderingDirectory + "\\" + lockedFileName + " Logs" + "\\" + aeLogs[i];
+				std::experimental::filesystem::path newFile = FolderToCreate + "\\" + aeLogs[i];
+				LogFile::WriteToLog("Renaming " + oldFile.string() + " to " + newFile.string());
+				EnsureSafeExecution(RenameFileUnsafe, &oldFile, &newFile);
+			}
+
+			//add our log to the render list and adjust the active render log we input earlier to be finished
+			LogFile::WriteToLog("Adding SQLite Database Completed Render log.");
+			EnsureSafeExecution(AddRenderLogUnsafe, &FolderToCreate);
+		}
+		//if this is a retry then move the project file back into the project hot folder
+		else
+		{
+			LogFile::WriteToLog("Moving project to hot folder for retry.");
+			fs::path backToHotFolder = fs::path(Dir::HotFolder + "\\" + Project::PROJECT_NAME + ".aep");
+			EnsureSafeExecution(RenameFileUnsafe, &newProjectPath, &backToHotFolder);
 		}
 
-		//clean up adobes mess
-		RenameMultipleFilesToNewDirectory(aeLogs, currentRenderingDirectory + "\\" + lockedFileName + " Logs", FolderToCreate);
-		fs::remove_all(currentRenderingDirectory);
+		//adjust our active rendering log
+		LogFile::WriteToLog("Adjusting SQLite Database Active Rendering log.");
+		EnsureSafeExecution(AdjustActiveRenderingDataUnsafe);
 
+		//cleanup the working directory
+		LogFile::WriteToLog("Removing rendering directory and anything within.");
+		EnsureSafeExecution(RemoveDirectoryUnsafe, &currentRenderingDirectory);
+		LogFile::WriteToLog("---------- END OF RENDER SEQUENCE ----------");
 		break;	
 	}
-}
-
-std::string ExecuteConsoleCommand(std::string AbsEXEPath, std::string Args)
-{
-	std::string out;
-	if (StartProcess(NULL, "open", AbsEXEPath.c_str(), Args.c_str(), NULL) == false)
-		out = "Program " + AbsEXEPath + " failed to run with args " + Args;
-	else
-		out = "Program " + AbsEXEPath + " successfully executed.";
-
-	return out;
-}
-
-bool StartProcess(void* pWindow, const char* pOperation, const char* pFile, const char* pParameters, const char* pDirectory)
-{
-	bool rc = false;
-
-	//Our execute structure
-	SHELLEXECUTEINFO ShExecInfo = { 0 };
-	ShExecInfo.cbSize = sizeof(SHELLEXECUTEINFO);
-	ShExecInfo.fMask = SEE_MASK_NOCLOSEPROCESS;
-	ShExecInfo.hwnd = (HWND)pWindow;
-	ShExecInfo.lpVerb = NULL;
-	ShExecInfo.lpFile = pFile;
-	ShExecInfo.lpParameters = pParameters;
-	ShExecInfo.lpDirectory = NULL;
-	ShExecInfo.nShow = SW_HIDE;
-	ShExecInfo.hInstApp = NULL;
-
-
-	if (ShellExecuteEx(&ShExecInfo))
-	{
-#pragma warning(suppress : 6387)
-		WaitForSingleObject(ShExecInfo.hProcess, INFINITE);
-		CloseHandle(ShExecInfo.hProcess);
-
-		rc = true;
-	}
-
-	return rc;
 }
 
 bool CheckToSeeIfHotFolderIsLocked()
@@ -352,20 +411,12 @@ bool CheckToSeeIfHotFolderIsLocked()
 
 	//check all files in the directory
 	if (isLocked)
+	{
 		cout << "Hot Folder is currently locked...\n";
+		LogFile::WriteToLog("Hot Folder is currently locked.");
+	}
 
 	return isLocked;
-}
-
-void StripExtraData(string & Directory)
-{
-	size_t size = Directory.length();
-	char extra = Directory[size - 1];
-
-	if (extra == '/')
-		Directory.pop_back();
-	else if (extra == '\\')
-		Directory.pop_back();
 }
 
 void ListenForExit()
@@ -377,8 +428,11 @@ void ListenForExit()
 		if (val == 0x1B)
 		{
 			cout << endl << "Exit has been requested. Finishing up last directive then shutting down." << endl;
+			LogFile::WriteToLog("Exit has been requested. Finishing up last directive then shutting down.");
 			complete = true;
 			break;
 		}
 	}
 }
+
+

@@ -5,11 +5,11 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <LocalDebuggerCommandArguments>-i "S:\projects" -ae "C:\Program Files\Adobe\Adobe After Effects CC 2018\Support Files\aerender.exe" -o "O:\AETL-Output" -db "S:\db\AETL-DB.aetldb"</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-i "S:\projects" -ae "C:\Program Files\Adobe\Adobe After Effects CC 2018\Support Files\aerender.exe" -o "O:\AETL-Output" -db "S:\db\AETL-DB.aetldb" -c "O:\AETL-AVI COMPLETE"</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LocalDebuggerCommandArguments>-i "S:\projects" -ae "C:\Program Files\Adobe\Adobe After Effects CC 2018\Support Files\aerender.exe" -o "O:\AETL-Output" -db "S:\db\AETL-DB.aetldb"</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-i "S:\projects" -ae "C:\Program Files\Adobe\Adobe After Effects CC 2018\Support Files\aerender.exe" -o "O:\AETL-Output" -db "S:\db\AETL-DB.aetldb" -c "O:\AETL-AVI COMPLETE"</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
 </Project>
