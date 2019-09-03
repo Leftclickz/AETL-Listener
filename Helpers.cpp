@@ -19,6 +19,8 @@ std::string Dir::RenderPath = "";
 std::string Dir::DatabasePath = "";
 std::string Dir::OutputFolder = "";
 std::string Dir::CopyFolder = "";
+
+double Dir::PercentThreshold = 35.0;
 int Dir::ADOBE_VERSION = 2018;
 
 void FindAndReplaceAll(std::string& data, std::string toSearch, std::string replaceStr)
@@ -282,7 +284,7 @@ void UNSAFE::AddRenderLogUnsafe(void* data_in, void* data_out, int* ret)
 	if (data_in == nullptr)
 	{
 		LogFile::WriteToLog("AddRenderLog failed. data_in was nullptr");
-		*ret = 0;
+		*ret = -1;
 		return;
 	}
 
@@ -376,7 +378,7 @@ void UNSAFE::RemoveDirectoryUnsafe(void* data_in, void* data_out, int* ret)
 	if (data_in == nullptr)
 	{
 		LogFile::WriteToLog("RemoveDirectoryUnsafe failed. data_in was nullptr");
-		*ret = 0;
+		*ret = -1;
 		return;
 	}
 
@@ -431,7 +433,7 @@ void UNSAFE::GetDirectoryIterator(void* data_in, void* data_out, int* ret)
 	if (data_in == nullptr)
 	{
 		LogFile::WriteToLog("GetDirectoryIterator failed. data_in was nullptr");
-		*ret = 0;
+		*ret = -1;
 		return;
 	}
 
@@ -452,7 +454,7 @@ void UNSAFE::CreateOutputLogUnsafe(void* data_filename, void* data_to_write, int
 	{
 		cout << "CreateOutpoutLogUnsafe failed: data_filename is nullptr" << endl;
 		LogFile::WriteToLog("CreateOutpoutLogUnsafe failed: data_filename is nullptr");
-		*ret = 0;
+		*ret = -1;
 		return;
 	}
 
@@ -475,7 +477,7 @@ void UNSAFE::AttemptVideoRender(void* data_in, void* data_out, int* ret)
 	{
 		cout << "AttemptVideoRender failed: data_in is nullptr" << endl;
 		LogFile::WriteToLog("CreateOutpoutLogUnsafe failed: data_in is nullptr");
-		*ret = 0;
+		*ret = -1;
 		return;
 	}
 
@@ -499,6 +501,96 @@ void UNSAFE::AttemptVideoRender(void* data_in, void* data_out, int* ret)
 		cout << "aerender exception caught. Adobe rendering stopped unexpectedly." << endl;
 		LogFile::WriteToLog("aerender exception caught. Adobe rendering stopped unexpectedly.");
 	}
+
+	*ret = 0;
+}
+
+void UNSAFE::FreeSpaceAvailable(void* data_in, void* data_out, int* ret)
+{
+	DiskInfo* info = static_cast<DiskInfo*>(data_in);
+	string* path = static_cast<string*>(data_out);
+
+	if (info == nullptr)
+	{
+		cout << "FreeSpaceAvailable failed: info conversion failed" << endl;
+		LogFile::WriteToLog("FreeSpaceAvailable failed: info conversion failed");
+		*ret = -1;
+		return;
+	}
+
+	if (path == nullptr)
+	{
+		cout << "FreeSpaceAvailable failed: path conversion failed" << endl;
+		LogFile::WriteToLog("FreeSpaceAvailable failed: path conversion failed");
+		*ret = -1;
+		return;
+	}
+
+	int success = ::GetDiskFreeSpaceEx(path->c_str(),                 // directory name
+		&info->FreeBytesAvailable,      // bytes available to caller
+		&info->TotalNumberOfBytes,      // bytes on disk
+		&info->TotalNumberOfFreeBytes); // free bytes on disk
+
+	if (success == 0)
+		*ret = -1 EXIT_ON_ERROR(*ret);
+		
+
+	const LONGLONG nGBFactor = 1024 * 1024 * 1024;
+
+	// get free space in GB.
+	info->FreeSpaceInGigaBytes = (double)(LONGLONG)info->TotalNumberOfFreeBytes.QuadPart / nGBFactor;
+	info->PercentUsed = 100.0 - ((double)(LONGLONG)info->TotalNumberOfFreeBytes.QuadPart / (double)(LONGLONG)info->TotalNumberOfBytes.QuadPart) * 100.0;
+
+	*ret = 0;
+}
+
+void UNSAFE::CheckIfDrivesAreAccessible(void* data_in, void* data_out, int* ret)
+{
+	string outputDrive = Dir::OutputFolder.substr(0, Dir::OutputFolder.find("\\") + 1);
+	string sourceDrive = Dir::HotFolder.substr(0, Dir::OutputFolder.find("\\") + 1);
+
+	unsigned int outputRet = GetDriveTypeA(outputDrive.c_str());
+	unsigned int sourceRet = GetDriveTypeA(sourceDrive.c_str());
+
+	bool* dataOut = static_cast<bool*>(data_out);
+
+	if (outputRet < 2)
+	{
+		cout << "Output drive is not mapped." << endl;
+		LogFile::WriteToLog("Output drive is not mapped.");
+		*dataOut = false;
+		*ret = 0;
+		return;
+	}
+
+	if (sourceRet < 2)
+	{
+		cout << "Source drive is not mapped." << endl;
+		LogFile::WriteToLog("Source drive is not mapped.");
+		*dataOut = false;
+		*ret = 0;
+		return;
+	}
+
+	*dataOut = true;
+}
+
+void UNSAFE::IsHotFolderLocked(void* data_in, void* data_out, int* ret)
+{
+	std::error_code ec;
+	bool isLocked = experimental::filesystem::exists(Dir::HotFolder + "\\" + LISTENER_FILE_NAME, ec);
+
+	//check all files in the directory
+	if (isLocked)
+	{
+		cout << "Hot Folder is currently locked...\n";
+		LogFile::WriteToLog("Hot Folder is currently locked.");
+	}
+
+	*ret = ec.value() PRINT_FS_ERROR(ec) EXIT_ON_ERROR(*ret);
+
+	bool* out = static_cast<bool*>(data_out);
+	*out = isLocked;
 
 	*ret = 0;
 }

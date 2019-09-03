@@ -9,7 +9,7 @@
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LocalDebuggerCommandArguments>-i "S:\projects" -ae "C:\Program Files\Adobe\Adobe After Effects CC 2018\Support Files\aerender.exe" -o "O:\AETL-Output" -db "S:\db\AETL-DB.aetldb" -c "O:\AETL-AVI COMPLETE"</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-i "S:\projects" -ae "C:\Program Files\Adobe\Adobe After Effects CC 2018\Support Files\aerender.exe" -o "O:\AETL-Output" -db "S:\db\AETL-DB.aetldb" -c "O:\AETL-AVI COMPLETE" -usage 40.0</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
   </PropertyGroup>
 </Project>

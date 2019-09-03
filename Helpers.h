@@ -4,9 +4,8 @@
 #include <thread>
 #include <filesystem>
 #include <iostream>
+#include <Windows.h>
 #include "sqllite/SQL_Helpers.h"
-
-
 
 class Project
 {
@@ -26,6 +25,7 @@ public:
 	static std::string DatabasePath;//path to the database
 	static std::string OutputFolder;//path to the output folder
 	static std::string CopyFolder;//path to the AETL-Encoder
+	static double PercentThreshold;//threshold to use
 
 	static int ADOBE_VERSION;
 };
@@ -73,6 +73,16 @@ void EnsureSafeExecution(void(*FUNC) (void*, void*, int*), void* data_in = nullp
 
 bool DrivesAreAccessible();
 
+struct DiskInfo
+{
+	ULARGE_INTEGER TotalNumberOfBytes;
+	ULARGE_INTEGER FreeBytesAvailable;
+	ULARGE_INTEGER TotalNumberOfFreeBytes;
+
+	double FreeSpaceInGigaBytes = 0;
+	double PercentUsed = 0;
+};
+
 namespace UNSAFE
 {
 	void RunOnceProgramSetup(void* data_in, void* data_out, int* ret);
@@ -104,6 +114,12 @@ namespace UNSAFE
 	void CreateOutputLogUnsafe(void* data_filename, void* data_to_write, int* ret);
 
 	void AttemptVideoRender(void* data_in, void* data_out, int* ret);
+
+	void FreeSpaceAvailable(void* data_in, void* data_out, int* ret);
+
+	void CheckIfDrivesAreAccessible(void* data_in, void* data_out, int* ret);
+
+	void IsHotFolderLocked(void* data_in, void* data_out, int* ret);
 }
 
 //Remove extra data

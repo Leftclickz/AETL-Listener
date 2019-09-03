@@ -8,7 +8,7 @@
 
 #define RENDER(_PROJECT) "-project \"" + _PROJECT + "\""
 
-#define AETL_VERSION "0.9a"
+#define AETL_VERSION "0.9b"
 
 using namespace std;
 namespace fs = std::experimental::filesystem;
@@ -28,17 +28,17 @@ volatile bool complete = false;
 int main(int argc, char* argv[])
 {
 	//greeting
-	cout << " -- AETL-Listener -- " << endl;
-	cout << "VERSION: " << AETL_VERSION << endl;
-	cout << "Press Escape to initiate shutdown at any time." << endl << endl;
+	std::cout << " -- AETL-Listener -- " << endl;
+	std::cout << "VERSION: " << AETL_VERSION << endl;
+	std::cout << "Press Escape to initiate shutdown at any time." << endl << endl;
 
 	LogFile::BeginLogging();
 
 	//there isnt enough args, get out
-	if (argc != 11)
+	if (argc != 13)
 	{
 		LogFile::WriteToLog("Argument count not correct. " + to_string(argc) + " found. Expected 11.");
-		cout << "Argument count not correct.\n";
+		std::cout << "Argument count not correct.\n";
 		complete = true;
 	}
 
@@ -50,7 +50,7 @@ int main(int argc, char* argv[])
 				Dir::HotFolder = string(argv[i + 1]);
 			else
 			{
-				cout << "-i flag found but no argument." << endl;
+				std::cout << "-i flag found but no argument." << endl;
 				complete = true;
 			}
 		if (string(argv[i]) == "-ae")
@@ -63,7 +63,7 @@ int main(int argc, char* argv[])
 
 				if (adobeVersion == "")
 				{
-					cout << "Adobe path given is incorrect. Expected C:\\Program Files\\Adobe\\Adobe After Effects CC XXXX\\Support Files\\aerender.exe where XXXX is the version." << endl
+					std::cout << "Adobe path given is incorrect. Expected C:\\Program Files\\Adobe\\Adobe After Effects CC XXXX\\Support Files\\aerender.exe where XXXX is the version." << endl
 						<< "Please locate your installation and rerun program with a correct path to it." << endl;
 					complete = true;
 				}
@@ -72,7 +72,7 @@ int main(int argc, char* argv[])
 			}
 			else
 			{
-				cout << "-ae flag found but no argument." << endl;
+				std::cout << "-ae flag found but no argument." << endl;
 				complete = true;
 			}
 		if (string(argv[i]) == "-db")
@@ -80,7 +80,7 @@ int main(int argc, char* argv[])
 				Dir::DatabasePath = string(argv[i + 1]);
 			else
 			{
-				cout << "-db flag found but no argument." << endl;
+				std::cout << "-db flag found but no argument." << endl;
 				complete = true;
 			}
 
@@ -89,7 +89,7 @@ int main(int argc, char* argv[])
 				Dir::OutputFolder = string(argv[i + 1]);
 			else
 			{
-				cout << "-o flag found but no argument." << endl;
+				std::cout << "-o flag found but no argument." << endl;
 				complete = true;
 			}
 
@@ -98,7 +98,16 @@ int main(int argc, char* argv[])
 				Dir::CopyFolder = string(argv[i + 1]);
 			else
 			{
-				cout << "-c flag found but no argument." << endl;
+				std::cout << "-c flag found but no argument." << endl;
+				complete = true;
+			}
+
+		if (string(argv[i]) == "-usage")
+			if (i + 1 < argc)
+				Dir::PercentThreshold = stod(argv[i + 1]);
+			else
+			{
+				std::cout << "-usage flag found but no argument." << endl;
 				complete = true;
 			}
 
@@ -107,21 +116,23 @@ int main(int argc, char* argv[])
 
 	if (Dir::HotFolder == "")
 	{
-		cout << "Hot folder not set properly.\n";
+		std::cout << "Hot folder not set properly.\n";
 		complete = true;
 	}
 	if (Dir::RenderPath == "")
 	{
-		cout << "Adobe Render path not set properly. \n";
+		std::cout << "Adobe Render path not set properly. \n";
 		complete = true;
 	}
 
 	if (SQL::SQL_LoadDatabase(&Project::OUR_DATABASE, Dir::DatabasePath) == false)
 	{
-		cout << "Database failed to open" << endl;
+		std::cout << "Database failed to open" << endl;
 		LogFile::WriteToLog("Database failed to open");
 		complete = true;
 	}
+	else
+		LogFile::WriteToLog("Database loaded successfully.");
 
 	//do some run-once stuff before looping forever
 	if (!complete)
@@ -134,19 +145,55 @@ int main(int argc, char* argv[])
 	InputListener->detach();
 #endif
 
+	LogFile::WriteToLog(string("Running program with these arguments: ")
+		+ "\n\t\t\tHot folder: " + Dir::HotFolder
+		+ "\n\t\t\tOutput folder: " + Dir::OutputFolder
+		+ "\n\t\t\tRenderer: " + Dir::RenderPath
+		+ "\n\t\t\tAdobe Version: " + to_string(Dir::ADOBE_VERSION)
+		+ "\n\t\t\tMax Percent threshold: " + to_string(Dir::PercentThreshold)
+	);
+
+
 	LogFile::WriteToLog("Beginning runtime loop.");
 
+	//our runtime loop. this will run forever unless exited by pressing the ESCAPE key
 	while (!complete)
 	{
-		//check that the drives are accessible
-		if (DrivesAreAccessible() == true)
+		//check if the hot folder is locked
+		bool isFolderLocked;
+		EnsureSafeExecution(UNSAFE::IsHotFolderLocked, nullptr, &isFolderLocked);
+
+		//if the folder isnt locked we can continue
+		if (isFolderLocked == false)
 		{
-			//only update if the lock isnt present on the folder
-			if (CheckToSeeIfHotFolderIsLocked() == false)
+			//get free space information
+			DiskInfo checkDisk;
+			string outputDrive = Dir::OutputFolder.substr(0, Dir::OutputFolder.find("\\") + 1);
+			EnsureSafeExecution(UNSAFE::FreeSpaceAvailable, &checkDisk, &outputDrive);
+
+			//if the disk is above usage specified, don't update. wait and try again.
+			if (checkDisk.PercentUsed > Dir::PercentThreshold)
+			{
+				std::cout << "Disk is above capacity. Waiting 1 minute then trying again..." << endl;
+				LogFile::WriteToLog("Disk is above capacity. Waiting 1 minute then trying again...");
+				SLEEP(60000);
+			}
+			else
+			{
+
+				std::cout << "Disk check successful. Printing disk values:" << endl;
+				std::cout << "Total space : " << checkDisk.TotalNumberOfBytes.QuadPart << " bytes" << endl
+					<< "Free space : " << checkDisk.FreeBytesAvailable.QuadPart << " bytes" << endl
+					<< "Free space in GB : " << checkDisk.FreeSpaceInGigaBytes << " GB" << endl
+					<< "Percent used : " << checkDisk.PercentUsed << "%" << endl << endl;
+
+				LogFile::WriteToLog("Successful disk check. Space available in GB: " + to_string(checkDisk.FreeSpaceInGigaBytes) + ". Percent used: " + to_string(checkDisk.PercentUsed) + ".");
+
+				//the runtime loop body
 				Update();
+			}
 		}
-		else
-			LogFile::WriteToLog("Drives inaccessible.");
+	
 
 		//sleep for 1 second + a random amount between 0-60 seconds
 		SLEEP(1000 + rand() % 60000);
@@ -159,7 +206,7 @@ int main(int argc, char* argv[])
 #elif (!_DEBUG)
 	delete InputListener;
 #endif
-	cout << endl << "Program has been shut down." << endl;
+	std::cout << endl << "Program has been shut down." << endl;
 	LogFile::EndLogging();
 	system("PAUSE");
 	return 0;
@@ -225,7 +272,7 @@ void Update()
 		if (Project::RENDER_DATA.Status == "RETRY")
 			//it's a retry so adjust the data entry for this project accordingly and notify user
 		{
-			cout << "Project " << Project::PROJECT_NAME << " is re-attempting rendering. \nRetry count: " << Project::RENDER_DATA.Retries << "\nRetries remaining: " << 4 - Project::RENDER_DATA.Retries << endl;
+			std::cout << "Project " << Project::PROJECT_NAME << " is re-attempting rendering. \nRetry count: " << Project::RENDER_DATA.Retries << "\nRetries remaining: " << 4 - Project::RENDER_DATA.Retries << endl;
 			LogFile::WriteToLog("Project " + Project::PROJECT_NAME + ": attempting retry of render process. Retry count: " 
 				+ to_string(Project::RENDER_DATA.Retries) + ". Retries remaining: " + to_string(4 - Project::RENDER_DATA.Retries));
 			LogFile::WriteToLog("Project " + Project::PROJECT_NAME + ": Adjusting project data entry - Status from RETRY to RENDERING.");
@@ -237,7 +284,7 @@ void Update()
 		else
 			//it's a fresh project. Build the RENDER_DATA using SQL_DATA and create a new entry in the database.
 		{
-			cout << "Project " << Project::PROJECT_NAME << " is a new project. Attempting first render." << endl;
+			std::cout << "Project " << Project::PROJECT_NAME << " is a new project. Attempting first render." << endl;
  			LogFile::WriteToLog("Project " + Project::PROJECT_NAME + ": Adding Active Render log to SQLite database.");
 			Project::RENDER_DATA.ImageType = Project::SQL_DATA.ImageType;
 			Project::RENDER_DATA.LocationID = Project::SQL_DATA.LocationID;
@@ -277,7 +324,7 @@ void Update()
 		EnsureSafeExecution(RenameFileUnsafe, &projectPath, &newProjectPath);
 		
 		//notify the render process
-		cout << "Project " << Project::PROJECT_NAME << " now being rendered. Locking....\n\n";
+		std::cout << "Project " << Project::PROJECT_NAME << " now being rendered. Locking....\n\n";
 		LogFile::WriteToLog("Project " + Project::PROJECT_NAME + " is now being rendered.");
 
 		//render the video
@@ -321,7 +368,7 @@ void Update()
 			Project::RENDER_DATA.Status = "COMPLETE";
 
 			//Notify user the success is complete.
-			cout << "\nProject " << Project::PROJECT_NAME << " rendered successfully.\n\n";
+			std::cout << "\nProject " << Project::PROJECT_NAME << " rendered successfully.\n\n";
 
 			//Move the AVI file to the encoder
 			LogFile::WriteToLog("Moving AVI file to AETL-Encoder hot folder...");
@@ -345,7 +392,7 @@ void Update()
 			}
 
 			//Notify user the failure is complete.
-			cout << "\nProject " << Project::PROJECT_NAME << " failed to render properly.\n\n";
+			std::cout << "\nProject " << Project::PROJECT_NAME << " failed to render properly.\n\n";
 
 			//Delete the AVI file if there is anything to cleanup
 			LogFile::WriteToLog("Deleting AVI file...");
@@ -412,7 +459,7 @@ bool CheckToSeeIfHotFolderIsLocked()
 	//check all files in the directory
 	if (isLocked)
 	{
-		cout << "Hot Folder is currently locked...\n";
+		std::cout << "Hot Folder is currently locked...\n";
 		LogFile::WriteToLog("Hot Folder is currently locked.");
 	}
 
@@ -427,7 +474,7 @@ void ListenForExit()
 
 		if (val == 0x1B)
 		{
-			cout << endl << "Exit has been requested. Finishing up last directive then shutting down." << endl;
+			std::cout << endl << "Exit has been requested. Finishing up last directive then shutting down." << endl;
 			LogFile::WriteToLog("Exit has been requested. Finishing up last directive then shutting down.");
 			complete = true;
 			break;
