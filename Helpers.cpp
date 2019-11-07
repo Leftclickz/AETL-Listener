@@ -353,6 +353,8 @@ void UNSAFE::RenameFileUnsafe(void* data_in, void* data_out, int* ret)
 	fs::path* oldFile = static_cast<fs::path*>(data_in);
 	fs::path* newFile = static_cast<fs::path*>(data_out);
 
+	LogFile::WriteToLog("Rename: " + oldFile->string() + " to " + newFile->string());
+
 	fs::rename(*oldFile, *newFile, ec);
 	*ret = ec.value() PRINT_FS_ERROR(ec) EXIT_ON_ERROR(*ret);
 
@@ -404,6 +406,9 @@ void UNSAFE::AviCleanupUnsafe(void* data_in, void* data_out, int* ret)
 		std::experimental::filesystem::path oldFile = aviFileToFind;
 		std::experimental::filesystem::path newFile = Dir::CopyFolder + "\\" + *ProjectName + ".avi";
 
+		LogFile::WriteToLog("Old filepath: " + aviFileToFind);
+		LogFile::WriteToLog("New filepath: " + newFile.string())
+			;
 		EnsureSafeExecution(RenameFileUnsafe, &oldFile, &newFile);
 		LogFile::WriteToLog("AVI file " + oldFile.string() + " moved to " + newFile.string() + ".");
 	}
