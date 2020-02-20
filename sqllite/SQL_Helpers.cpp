@@ -1,5 +1,5 @@
 #include "SQL_Helpers.h"
-#include <experimental/filesystem>
+#include <filesystem>
 #include <iostream>
 #include <thread>
 
@@ -11,7 +11,7 @@ namespace SQL
 	bool SQL_LoadDatabase(sqlite3** db, std::string directory)
 	{
 		//check if the databse file exists
-		bool buildDB = !experimental::filesystem::exists(directory);
+		bool buildDB = !filesystem::exists(directory);
 
 		//if it doesnt leave and report failure
 		if (buildDB)

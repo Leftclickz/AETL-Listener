@@ -13,8 +13,17 @@ public:
 	static SQL::ProjectSQLData SQL_DATA;
 	static SQL::RenderData RENDER_DATA;
 	static std::string PROJECT_NAME;
+	static std::string CURRENT_RENDERING_DIRECTORY;
+	static std::filesystem::path CURRENT_PROJECT_PATH;
+
+	static std::string TIMESTAMP;
+	static std::string TIMESTAMPED_FILENAME;
+
+	static std::string FINAL_RENDER_FILEPATH;
 
 	static sqlite3* OUR_DATABASE;
+
+	static void Reset();
 };
 
 class Dir
@@ -69,7 +78,7 @@ int CreateDirectory(std::string Path);
 
 void AppendHostName(std::string& data);
 
-void EnsureSafeExecution(void(*FUNC) (void*, void*, int*), void* data_in = nullptr, void* data_out = nullptr);
+bool EnsureSafeExecution(void(*FUNC) (void*, void*, int*), void* data_in = nullptr, void* data_out = nullptr);
 
 bool DrivesAreAccessible();
 

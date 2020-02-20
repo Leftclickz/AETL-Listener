@@ -20,6 +20,15 @@ namespace SQL
 		std::string ProjectType = "";
 		std::string ImageType = "";
 		std::string Directory = "";
+
+		void Reset()
+		{
+			ProjectID = "";
+			LocationID = "";
+			ProjectType = "";
+			ImageType = "";
+			Directory = "";
+		}
 	};
 
 	struct RenderData
@@ -32,6 +41,18 @@ namespace SQL
 		std::string Status = "";
 		std::string Directory = "";
 		unsigned int Retries = 0;
+
+		void Reset()
+		{
+			ProjectID = "";
+			LocationID = "";
+			ProjectType = "";
+			ImageType = "";
+			CreatedAt = "";
+			Status = "";
+			Directory = "";
+			Retries = 0;
+		}
 	};
 
 	//Add objects to the SQL table. Use overloads.

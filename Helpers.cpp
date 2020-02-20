@@ -1,7 +1,7 @@
 #include "Helpers.h"
 #include <time.h>
 #include <fstream>
-#include <experimental/filesystem>
+#include <filesystem>
 #include <winsock.h>
 #include <iostream>
 #include "LogFile.h"
@@ -13,6 +13,26 @@ SQL::ProjectSQLData Project::SQL_DATA;
 SQL::RenderData Project::RENDER_DATA;
 std::string Project::PROJECT_NAME;
 sqlite3* Project::OUR_DATABASE;
+
+std::filesystem::path Project::CURRENT_PROJECT_PATH = "";
+
+std::string Project::TIMESTAMP = "";
+std::string Project::TIMESTAMPED_FILENAME = "";
+std::string Project::FINAL_RENDER_FILEPATH = "";
+
+std::string Project::CURRENT_RENDERING_DIRECTORY = "";
+
+void Project::Reset()
+{
+	CURRENT_PROJECT_PATH = "";
+	PROJECT_NAME = "";
+	CURRENT_RENDERING_DIRECTORY = "";
+	TIMESTAMP = "";
+	TIMESTAMPED_FILENAME = "";
+	FINAL_RENDER_FILEPATH = "";
+	SQL_DATA.Reset();
+	RENDER_DATA.Reset();
+}
 
 std::string Dir::HotFolder = "";
 std::string Dir::RenderPath = "";
@@ -56,7 +76,7 @@ const std::string CurrentDateTime()
 
 const std::string GetAbsoluteDirectory(std::string Directory)
 {
-	return std::experimental::filesystem::absolute(Directory).string();
+	return std::filesystem::absolute(Directory).string();
 }
 
 void RenameMultipleFilesToNewDirectory(std::vector<std::string> fileNames, std::string OldDirectory, std::string NewDirectory)
@@ -66,7 +86,7 @@ void RenameMultipleFilesToNewDirectory(std::vector<std::string> fileNames, std::
 
 bool DirectoryExists(std::string FolderPath, bool CreateDirectoryIfDoesNotExist)
 {
-	namespace fs = std::experimental::filesystem;
+	namespace fs = std::filesystem;
 	std::string directoryName = FolderPath;
 	std::error_code ec;
 
@@ -93,7 +113,7 @@ bool DirectoryExists(std::string FolderPath, bool CreateDirectoryIfDoesNotExist)
 
 int CreateDirectory(std::string Path)
 {
-	namespace fs = std::experimental::filesystem;
+	namespace fs = std::filesystem;
 	std::string directoryName = Path;
 	std::error_code ec;
 
@@ -126,7 +146,7 @@ void AppendHostName(std::string& data)
 }
 
 
-void EnsureSafeExecution(void(*FUNC) (void*, void*, int*), void* data_in, void* data_out)
+bool EnsureSafeExecution(void(*FUNC) (void*, void*, int*), void* data_in, void* data_out)
 {
 	int retCode = 0;
 	do
@@ -156,7 +176,19 @@ void EnsureSafeExecution(void(*FUNC) (void*, void*, int*), void* data_in, void* 
 			SLEEP(10000);
 		}
 		
+		LogFile::AddReturnCode(retCode);
+
+		if (LogFile::IsStuckInError())
+		{
+			retCode = 0;
+
+			LogFile::WriteToLog("Detecting broken infinite loop in EnsureSafeExecution. Attempting reboot of thread.");
+			return false;
+		}
+
 	} while (retCode != 0);
+
+	return true;
 }
 
 
@@ -309,7 +341,7 @@ void UNSAFE::ObjectExistsUnsafe(void* data_in, void* data_out, int* ret)
 	string* path = (string*)(data_in);
 	std::error_code ec;
 
-	existVal = std::experimental::filesystem::exists(*path, ec);
+	existVal = std::filesystem::exists(*path, ec);
 	*ret = ec.value() PRINT_FS_ERROR(ec) EXIT_ON_ERROR(*ret);
 
 	//pass the result if they care
@@ -326,7 +358,7 @@ void UNSAFE::CreateDirectoryUnsafe(void* data_in, void* data_out, int* ret)
 {
 	string* path = static_cast<string*>(data_in);
 
-	namespace fs = std::experimental::filesystem;
+	namespace fs = std::filesystem;
 
 	std::error_code ec;
 
@@ -347,7 +379,7 @@ void UNSAFE::CreateDirectoryUnsafe(void* data_in, void* data_out, int* ret)
 void UNSAFE::RenameFileUnsafe(void* data_in, void* data_out, int* ret)
 {
 	
-	namespace fs = std::experimental::filesystem;
+	namespace fs = std::filesystem;
 	std::error_code ec;
 
 	fs::path* oldFile = static_cast<fs::path*>(data_in);
@@ -364,8 +396,10 @@ void UNSAFE::RenameFileUnsafe(void* data_in, void* data_out, int* ret)
 void UNSAFE::IsDirectoryUnsafe(void* data_in, void* data_out, int* ret)
 {
 	std::error_code ec;
-	std::experimental::filesystem::v1::directory_entry* entry = (std::experimental::filesystem::v1::directory_entry*)data_in;
-	bool val = std::experimental::filesystem::is_directory(*entry, ec);
+	std::filesystem::directory_entry* entry = (std::filesystem::directory_entry*)data_in;
+
+
+	bool val = std::filesystem::is_directory(*entry, ec);
 
 	*ret = ec.value() PRINT_FS_ERROR(ec) EXIT_ON_ERROR(*ret);
 
@@ -384,7 +418,7 @@ void UNSAFE::RemoveDirectoryUnsafe(void* data_in, void* data_out, int* ret)
 		return;
 	}
 
-	namespace fs = std::experimental::filesystem;
+	namespace fs = std::filesystem;
 	std::error_code ec;
 	string* DirectoryToRemove = (string*)(data_in);
 
@@ -403,8 +437,8 @@ void UNSAFE::AviCleanupUnsafe(void* data_in, void* data_out, int* ret)
 	LogFile::WriteToLog("Cleaning up AVI file.");
 	if (*SuccessfulRender == true)
 	{
-		std::experimental::filesystem::path oldFile = aviFileToFind;
-		std::experimental::filesystem::path newFile = Dir::CopyFolder + "\\" + *ProjectName + ".avi";
+		std::filesystem::path oldFile = aviFileToFind;
+		std::filesystem::path newFile = Dir::CopyFolder + "\\" + *ProjectName + ".avi";
 
 		LogFile::WriteToLog("Old filepath: " + aviFileToFind);
 		LogFile::WriteToLog("New filepath: " + newFile.string())
@@ -442,7 +476,7 @@ void UNSAFE::GetDirectoryIterator(void* data_in, void* data_out, int* ret)
 		return;
 	}
 
-	namespace fs = std::experimental::filesystem;
+	namespace fs = std::filesystem;
 	std::error_code ec;
 
 	string* DirectoryToIterate = (string*)(data_in);
@@ -583,7 +617,7 @@ void UNSAFE::CheckIfDrivesAreAccessible(void* data_in, void* data_out, int* ret)
 void UNSAFE::IsHotFolderLocked(void* data_in, void* data_out, int* ret)
 {
 	std::error_code ec;
-	bool isLocked = experimental::filesystem::exists(Dir::HotFolder + "\\" + LISTENER_FILE_NAME, ec);
+	bool isLocked = filesystem::exists(Dir::HotFolder + "\\" + LISTENER_FILE_NAME, ec);
 
 	//check all files in the directory
 	if (isLocked)

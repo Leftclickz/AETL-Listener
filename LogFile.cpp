@@ -1,9 +1,17 @@
 #include "LogFile.h"
-#include <experimental/filesystem>
+#include <filesystem>
 #include <iostream>
 #include <fstream>
 
 std::ofstream LogFile::LogFileStream;
+
+std::string* LogFile::LastFiveEntries;
+
+int LogFile::CurrentEntryIndex;
+
+int LogFile::CurrentReturnCodeIndex;
+
+int* LogFile::LastFiveReturnCodes;
 
 LogFile::LogFile()
 {
@@ -21,13 +29,24 @@ void LogFile::BeginLogging()
 	std::string LogPath = _GetAbsoluteDirectory("Logs") + "\\" + dateFormated + ".log";
 	_FindAndReplaceAll(LogPath, "\\", "/");
 
+	LastFiveEntries = new std::string[LOG_ENTRY_COUNT_LIMIT]{ "" };
 	LogFileStream = std::ofstream(LogPath, std::ios::out);
+	LastFiveReturnCodes = new int[LOG_ENTRY_COUNT_LIMIT] {0};
+	CurrentEntryIndex = 0;
+	CurrentReturnCodeIndex = 0;
 }
 
 void LogFile::WriteToLog(std::string data)
 {
 	if (LogFileStream.is_open())
 	{
+		//Copy the entry into temporary memory
+		LastFiveEntries[CurrentEntryIndex] = data;
+
+		CurrentEntryIndex++;
+		CurrentEntryIndex = CurrentEntryIndex >= LOG_ENTRY_COUNT_LIMIT ? 0 : CurrentEntryIndex;
+
+		//Log the data.
 		LogFileStream << _CurrentDateTime() << " - " << data << std::endl;
 	}
 }
@@ -40,9 +59,51 @@ void LogFile::EndLogging()
 	}
 }
 
+
+
+bool LogFile::IsInfinitelyWriting()
+{
+	if (LogFileStream.is_open())
+	{
+		std::string CurrentCompare = LastFiveEntries[0];
+
+		for (int i = 1; i < LOG_ENTRY_COUNT_LIMIT; i++)
+		{
+			if (CurrentCompare == LastFiveEntries[i])
+				continue;
+			else
+				return false;
+		}
+	}
+
+	return false;
+}
+
+bool LogFile::IsStuckInError()
+{
+	for (int i = 0; i < LOG_ENTRY_COUNT_LIMIT; i++)
+	{
+		if (LastFiveReturnCodes[i] == -1)
+			continue;
+		else
+			return false;
+	}
+
+	return true;
+}
+
+void LogFile::AddReturnCode(int val)
+{
+	LastFiveReturnCodes[CurrentReturnCodeIndex] = val;
+
+	CurrentReturnCodeIndex++;
+	CurrentReturnCodeIndex = CurrentReturnCodeIndex >= LOG_ENTRY_COUNT_LIMIT ? 0 : CurrentReturnCodeIndex;
+
+}
+
 static bool _DirectoryExists(std::string FolderPath, bool CreateDirectoryIfDoesNotExist /* = true */)
 {
-	namespace fs = std::experimental::filesystem;
+	namespace fs = std::filesystem;
 	std::string directoryName = FolderPath;
 
 	if (!fs::is_directory(directoryName) || !fs::exists(directoryName)) // Check if src folder exists
@@ -92,5 +153,5 @@ const static std::string _CurrentDateTime()
 //get our directory
 const static std::string _GetAbsoluteDirectory(std::string Directory)
 {
-	return std::experimental::filesystem::absolute(Directory).string();
+	return std::filesystem::absolute(Directory).string();
 }
