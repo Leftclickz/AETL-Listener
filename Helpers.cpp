@@ -165,14 +165,6 @@ bool EnsureSafeExecution(void(*FUNC) (void*, void*, int*), void* data_in, void* 
 		if (retCode != 0)
 		{
 			cout << "EnsureSafeExecution - unsuccessful sandbox execution. Retrying in 10 seconds." << endl;
-			
-			string valOne, valTwo;
-			string* in_string = static_cast<string*>(data_in);
-			string* out_string = static_cast<string*>(data_out);
-			valOne = in_string == nullptr ? "" : *in_string;
-			valTwo = out_string == nullptr ? "" : *out_string;
-
-			LogFile::WriteToLog("EnsureSafeExecution failed. Values in operation: data_in :" + valOne + " data_out : " + valTwo);
 			SLEEP(10000);
 		}
 		
@@ -435,6 +427,7 @@ void UNSAFE::AviCleanupUnsafe(void* data_in, void* data_out, int* ret)
 	string aviFileToFind = Dir::OutputFolder + "\\" + *ProjectName + ".avi";
 
 	LogFile::WriteToLog("Cleaning up AVI file.");
+
 	if (*SuccessfulRender == true)
 	{
 		std::filesystem::path oldFile = aviFileToFind;

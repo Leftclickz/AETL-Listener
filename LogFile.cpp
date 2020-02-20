@@ -89,6 +89,11 @@ bool LogFile::IsStuckInError()
 			return false;
 	}
 
+	//if we are in fact stuck in error, flush the data but return true
+	for (int i = 0; i < LOG_ENTRY_COUNT_LIMIT; i++)
+		LastFiveReturnCodes[i] = 0;
+
+	LogFile::WriteToLog("Process is stuck in error. Exiting rendering loop.");
 	return true;
 }
 
