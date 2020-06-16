@@ -1,0 +1,112 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\array.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\binarystring.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\connection.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\connection_base.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\cursor.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\dbtransaction.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\encodings.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\errorhandler.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\except.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\field.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\largeobject.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\nontransaction.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\notification.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\pipeline.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\prepared_statement.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\result.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\robusttransaction.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\row.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\sql_cursor.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\statement_parameters.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\strconv.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\stream_base.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\stream_from.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\stream_to.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\subtransaction.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\tablereader.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\tablestream.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\tablewriter.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\transaction.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\transaction_base.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\util.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\version.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\win32\libpqxx.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{348DF0C8-18DF-3B5B-911E-D2321884BC0F}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

@@ -1,11 +1,11 @@
-#include "Helpers.h"
+#include "ListenerPCH.h"
+
 #include <time.h>
 #include <fstream>
 #include <filesystem>
 #include <winsock.h>
 #include <iostream>
-#include "LogFile.h"
-#include "kguithread.h"
+
 
 using namespace std;
 
@@ -42,6 +42,8 @@ std::string Dir::CopyFolder = "";
 
 double Dir::PercentThreshold = 35.0;
 int Dir::ADOBE_VERSION = 2018;
+
+bool Dir::UsingSqlite = false;
 
 void FindAndReplaceAll(std::string& data, std::string toSearch, std::string replaceStr)
 {
@@ -247,29 +249,45 @@ void UNSAFE::RunOnceProgramSetup(void* data_in, void* data_out, int* ret)
 	*ret = 0;
 }
 
-void UNSAFE::FetchSQLBuildLogUnsafe(void* data_in, void* data_out, int* ret)
+void UNSAFE::FetchProjectBuildLogUnsafe(void* data_in, void* data_out, int* ret)
 {
-	try
+	if (Dir::UsingSqlite)
 	{
-		Project::SQL_DATA = SQL::SQL_GetProjectBuildLog(Project::OUR_DATABASE, Project::PROJECT_NAME);
+		try
+		{
+			Project::SQL_DATA = SQL::SQL_GetProjectBuildLog(Project::OUR_DATABASE, Project::PROJECT_NAME);
+		}
+		catch (const std::exception & e)
+		{
+			throw e;
+		}
 	}
-	catch (const std::exception& e)
+	else
 	{
-		throw e;
+		Project::SQL_DATA = PGSQL::GetProjectBuildLog(Project::PROJECT_NAME, AETL_DB);
 	}
+
+
 
 	*ret = 0;
 }
 
 void UNSAFE::CollectActiveRenderingDataUnsafe(void* data_in, void* data_out, int* ret)
 {
-	try
+	if (Dir::UsingSqlite)
 	{
-		Project::RENDER_DATA = SQL::SQL_CollectActiveRenderingData(Project::OUR_DATABASE, Project::SQL_DATA);
+		try
+		{
+			Project::RENDER_DATA = SQL::SQL_CollectActiveRenderingData(Project::OUR_DATABASE, Project::SQL_DATA);
+		}
+		catch (const std::exception & e)
+		{
+			throw e;
+		}
 	}
-	catch (const std::exception& e)
+	else
 	{
-		throw e;
+		Project::RENDER_DATA = PGSQL::GetActiveRenderingLog(Project::SQL_DATA.Directory, AETL_DB);
 	}
 
 	*ret = 0;
@@ -277,29 +295,51 @@ void UNSAFE::CollectActiveRenderingDataUnsafe(void* data_in, void* data_out, int
 
 void UNSAFE::AdjustActiveRenderingDataUnsafe(void* data_in, void* data_out, int* ret)
 {
-	try
+	if (Dir::UsingSqlite)
 	{
-		SQL::SQL_AdjustActiveRenderInformation(Project::RENDER_DATA, Project::OUR_DATABASE);
+		try
+		{
+			SQL::SQL_AdjustActiveRenderInformation(Project::RENDER_DATA, Project::OUR_DATABASE);
+		}
+		catch (const std::exception & e)
+		{
+			throw e;
+		}
 	}
-	catch (const std::exception& e)
+	else
 	{
-		throw e;
-	}
+		std::string pSQL = "UPDATE public.\"" + std::string(DATABASE_PROJECT_LOG) + "\" SET \"Retries\"=" + std::to_string(Project::RENDER_DATA.Retries)
+			+ ", \"UpdatedAt\"=CURRENT_TIMESTAMP";
 
+		if (Project::RENDER_DATA.Status == "FAILED")
+		{
+			pSQL += ",\"Status\"='ERROR'";
+		}
+
+		pSQL += " WHERE \"Name\"='" + Project::PROJECT_NAME + "';";
+
+		(void)PGSQL::Query(pSQL, AETL_DB);
+	}
 	*ret = 0;
 }
 
 void UNSAFE::AddActiveRenderingDataUnsafe(void* data_in, void* data_out, int* ret)
 {
-	try
+	if (Dir::UsingSqlite)
 	{
-		Project::RENDER_DATA.CreatedAt = SQL::SQL_AddActiveRenderLog(Project::RENDER_DATA, Project::OUR_DATABASE);
+		try
+		{
+			Project::RENDER_DATA.CreatedAt = SQL::SQL_AddActiveRenderLog(Project::RENDER_DATA, Project::OUR_DATABASE);
+		}
+		catch (const std::exception & e)
+		{
+			throw e;
+		}
 	}
-	catch (const std::exception& e)
+	else
 	{
-		throw e;
+		(void)PGSQL::Query("UPDATE public.\"" + std::string(DATABASE_PROJECT_LOG) + "\" SET \"Retries\"=" + std::to_string(Project::RENDER_DATA.Retries) + ", UpdatedAt=CURRENT_TIMESTAMP;", AETL_DB);
 	}
-
 	*ret = 0;
 }
 
@@ -314,13 +354,20 @@ void UNSAFE::AddRenderLogUnsafe(void* data_in, void* data_out, int* ret)
 
 	string FolderToCreate = *(string*)(data_in);
 
-	try
+	if (Dir::UsingSqlite)
 	{
-		SQL::SQL_AddRenderLog(Project::SQL_DATA, FolderToCreate, Project::OUR_DATABASE);
+		try
+		{
+			SQL::SQL_AddRenderLog(Project::SQL_DATA, FolderToCreate, Project::OUR_DATABASE);
+		}
+		catch (const std::exception & e)
+		{
+			throw e;
+		}
 	}
-	catch (const std::exception& e)
+	else
 	{
-		throw e;
+		(void)PGSQL::Query("UPDATE public.\"" + std::string(DATABASE_PROJECT_LOG) + "\" SET \"VideoRendered\"=CURRENT_TIMESTAMP, \"UpdatedAt\"=CURRENT_TIMESTAMP;", AETL_DB);
 	}
 	
 	*ret = 0;

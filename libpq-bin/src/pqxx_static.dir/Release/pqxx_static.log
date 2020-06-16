@@ -1,0 +1,41 @@
+﻿  Building Custom Rule C:/Users/ceecam/source/git repos/AETL-Generator/AETL-Generator/libpqxx/src/CMakeLists.txt
+  CMake does not need to re-run because C:/Users/ceecam/source/git repos/AETL-Generator/AETL-Generator/libpq-bin/src/CMakeFiles/generate.stamp is up-to-date.
+  array.cxx
+  binarystring.cxx
+  connection.cxx
+  connection_base.cxx
+  cursor.cxx
+  dbtransaction.cxx
+  encodings.cxx
+  errorhandler.cxx
+  except.cxx
+  field.cxx
+C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\field.cxx(64): warning C4267: 'argument': conversion from 'size_t' to 'pqxx::result::size_type', possible loss of data
+C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\field.cxx(70): warning C4267: 'argument': conversion from 'size_t' to 'pqxx::result::size_type', possible loss of data
+C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\src\field.cxx(76): warning C4267: 'argument': conversion from 'size_t' to 'pqxx::result::size_type', possible loss of data
+  largeobject.cxx
+  nontransaction.cxx
+  notification.cxx
+  pipeline.cxx
+  prepared_statement.cxx
+  result.cxx
+  robusttransaction.cxx
+  row.cxx
+  sql_cursor.cxx
+  statement_parameters.cxx
+  Generating Code...
+  Compiling...
+  strconv.cxx
+  stream_base.cxx
+  stream_from.cxx
+  stream_to.cxx
+  subtransaction.cxx
+  tablereader.cxx
+  tablestream.cxx
+  tablewriter.cxx
+  transaction.cxx
+  transaction_base.cxx
+  util.cxx
+  version.cxx
+  Generating Code...
+  pqxx_static.vcxproj -> C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpq-bin\src\Release\pqxx.lib

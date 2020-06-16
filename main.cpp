@@ -1,10 +1,7 @@
+#include "ListenerPCH.h"
 #include <windows.h>
 #include <conio.h>
-#include "kguithread.h"
-#include "Helpers.h"
-#include "sqllite/SQL_Helpers.h"
 #include <fstream>
-#include "LogFile.h"
 
 #define RENDER(_PROJECT) "-project \"" + _PROJECT + "\""
 
@@ -120,6 +117,11 @@ int main(int argc, char* argv[])
 				ProgramExecutionComplete = true;
 			}
 
+		if (string(argv[i]) == "-sqlite")
+		{
+			std::cout << "Using SQLite3." << endl;
+			Dir::UsingSqlite = true;
+		}
 	}
 
 
@@ -134,14 +136,32 @@ int main(int argc, char* argv[])
 		ProgramExecutionComplete = true;
 	}
 
-	if (SQL::SQL_LoadDatabase(&Project::OUR_DATABASE, Dir::DatabasePath) == false)
+	if (Dir::UsingSqlite)
 	{
-		std::cout << "Database failed to open" << endl;
-		LogFile::WriteToLog("Database failed to open");
-		ProgramExecutionComplete = true;
+		if (SQL::SQL_LoadDatabase(&Project::OUR_DATABASE, Dir::DatabasePath) == false)
+		{
+			std::cout << "Database failed to open" << endl;
+			LogFile::WriteToLog("Database failed to open");
+			ProgramExecutionComplete = true;
+		}
+		else
+			LogFile::WriteToLog("Database loaded successfully.");
 	}
 	else
-		LogFile::WriteToLog("Database loaded successfully.");
+	{
+		try
+		{
+			PGSQL::Connect("postgresql://aetl@10.20.2.6:5432/aetl?password=BU1yCdsDAvobR7N9srv3", AETL_DB);
+		}
+		catch (const std::exception & e)
+		{
+			//error reason
+			std::cerr << e.what() << std::endl;
+
+			LogFile::WriteToLog("Error upon attempting connection: " + std::string(e.what()));
+			ProgramExecutionComplete = true;
+		}
+	}
 
 	//do some run-once stuff before looping forever
 	if (!ProgramExecutionComplete)
@@ -160,6 +180,7 @@ int main(int argc, char* argv[])
 		+ "\n\t\t\tRenderer: " + Dir::RenderPath
 		+ "\n\t\t\tAdobe Version: " + to_string(Dir::ADOBE_VERSION)
 		+ "\n\t\t\tMax Percent threshold: " + to_string(Dir::PercentThreshold)
+		+ "\n\t\t\tUsing SQLite3: " + (Dir::UsingSqlite ? "true" : "false")
 	);
 
 	LogFile::WriteToLog("Beginning runtime loop.");
@@ -302,7 +323,7 @@ void VideoRenderUpdateLoop()
 
 		//Get our project data from the build log
 		LogFile::WriteToLog("Collecting Project Build Log from SQLite...");
-		TERMINATE_IF_FAILURE(FetchSQLBuildLogUnsafe, nullptr, nullptr, LogFile::PRE_RENDER);
+		TERMINATE_IF_FAILURE(FetchProjectBuildLogUnsafe, nullptr, nullptr, LogFile::PRE_RENDER);
 		LogFile::WriteToLog("Project Build Log found.");
 
 		LogFile::WriteToLog("Project data: "
@@ -379,7 +400,7 @@ void VideoRenderUpdateLoop()
 				//it's a fresh project. Build the RENDER_DATA using SQL_DATA and create a new entry in the database.
 			{
 				std::cout << "Project " << Project::PROJECT_NAME << " is a new project. Attempting first render." << endl;
-				LogFile::WriteToLog("Project " + Project::PROJECT_NAME + ": Adding Active Render log to SQLite database.");
+				LogFile::WriteToLog("Project " + Project::PROJECT_NAME + ": adjusting render log.");
 				Project::RENDER_DATA.ImageType = Project::SQL_DATA.ImageType;
 				Project::RENDER_DATA.LocationID = Project::SQL_DATA.LocationID;
 				Project::RENDER_DATA.ProjectID = Project::SQL_DATA.ProjectID;
@@ -439,8 +460,8 @@ void VideoRenderUpdateLoop()
 			std::cout << "\nProject " << Project::PROJECT_NAME << " rendered successfully.\n\n";
 
 			//Move the AVI file to the encoder
-			LogFile::WriteToLog("Moving AVI file to AETL-Encoder hot folder...");
-			TERMINATE_IF_FAILURE(AviCleanupUnsafe, &Project::PROJECT_NAME, &renderResult, LogFile::POST_RENDER);
+			//LogFile::WriteToLog("Moving AVI file to AETL-Encoder hot folder...");
+			//TERMINATE_IF_FAILURE(AviCleanupUnsafe, &Project::PROJECT_NAME, &renderResult, LogFile::POST_RENDER);
 
 
 		}
@@ -523,7 +544,7 @@ void VideoRenderUpdateLoop()
 		//cleanup the working directory
 		LogFile::WriteToLog("Removing rendering directory and anything within.");
 		TERMINATE_IF_FAILURE(RemoveDirectoryUnsafe, &Project::CURRENT_RENDERING_DIRECTORY, nullptr, LogFile::FULL_RENDER);
-		LogFile::WriteToLog("---------- END OF RENDER SEQUENCE ----------");
+		LogFile::WriteToLog("---------- END OF AE RENDER SEQUENCE ----------");
 
 
 		//wipe the project data since we successfully rendered.

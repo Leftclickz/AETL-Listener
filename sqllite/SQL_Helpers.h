@@ -11,6 +11,8 @@ using namespace std;
 #define DATABASE_RENDER_LOG "ProjectRenderLog"
 #define DATABASE_ACTIVE_LOG "ProjectActiveRenders"
 
+#define AETL_DB "AETL"
+
 namespace SQL
 {
 	struct ProjectSQLData

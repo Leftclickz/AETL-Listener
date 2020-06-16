@@ -37,6 +37,7 @@ public:
 	static double PercentThreshold;//threshold to use
 
 	static int ADOBE_VERSION;
+	static bool UsingSqlite;
 };
 
 #define ENSURE_DRIVE_SAFETY while (DrivesAreAccessible() == false) SLEEP(10000);;
@@ -96,7 +97,7 @@ namespace UNSAFE
 {
 	void RunOnceProgramSetup(void* data_in, void* data_out, int* ret);
 
-	void FetchSQLBuildLogUnsafe(void* data_in, void* data_out, int* ret);
+	void FetchProjectBuildLogUnsafe(void* data_in, void* data_out, int* ret);
 
 	void CollectActiveRenderingDataUnsafe(void* data_in, void* data_out, int* ret);
 

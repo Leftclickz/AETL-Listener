@@ -1,0 +1,223 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="16.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\runner.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test00.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test01.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test02.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test04.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test07.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test10.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test11.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test12.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test13.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test14.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test15.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test16.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test17.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test18.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test20.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test21.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test23.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test26.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test29.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test30.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test31.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test32.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test33.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test34.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test35.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test36.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test37.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test39.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test46.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test48.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test49.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test50.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test51.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test52.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test53.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test54.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test55.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test56.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test57.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test58.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test59.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test60.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test61.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test62.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test63.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test64.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test65.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test66.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test67.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test69.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test70.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test71.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test72.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test73.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test74.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test75.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test76.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test77.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test78.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test79.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test82.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test84.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test86.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test87.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test88.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test89.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test90.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test92.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\test93.cxx">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\ceecam\source\git repos\AETL-Generator\AETL-Generator\libpqxx\test\CMakeLists.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{348DF0C8-18DF-3B5B-911E-D2321884BC0F}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

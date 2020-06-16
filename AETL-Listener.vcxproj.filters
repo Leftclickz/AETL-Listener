@@ -22,6 +22,9 @@
     <Filter Include="LogFile">
       <UniqueIdentifier>{011ce2f6-654a-41bc-93df-22ea70d11c9f}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Postgres">
+      <UniqueIdentifier>{572a7310-c4fc-4929-8c12-f3e9a95c4722}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -42,6 +45,15 @@
     <ClCompile Include="LogFile.cpp">
       <Filter>LogFile</Filter>
     </ClCompile>
+    <ClCompile Include="postgres\PGSQL_Helpers.cpp">
+      <Filter>Postgres</Filter>
+    </ClCompile>
+    <ClCompile Include="postgres\DatabaseConnection.cpp">
+      <Filter>Postgres</Filter>
+    </ClCompile>
+    <ClCompile Include="ListenerPCH.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="kguithread.h">
@@ -58,6 +70,15 @@
     </ClInclude>
     <ClInclude Include="LogFile.h">
       <Filter>LogFile</Filter>
+    </ClInclude>
+    <ClInclude Include="postgres\PGSQL_Helpers.h">
+      <Filter>Postgres</Filter>
+    </ClInclude>
+    <ClInclude Include="postgres\DatabaseConnection.h">
+      <Filter>Postgres</Filter>
+    </ClInclude>
+    <ClInclude Include="ListenerPCH.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
