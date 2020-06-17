@@ -33,7 +33,7 @@ public:
 	static std::string RenderPath;//the path to adobe render exe
 	static std::string DatabasePath;//path to the database
 	static std::string OutputFolder;//path to the output folder
-	static std::string CopyFolder;//path to the AETL-Encoder
+	static std::string EncodeFolder;//path to the AETL-Encoder
 	static double PercentThreshold;//threshold to use
 
 	static int ADOBE_VERSION;

@@ -38,7 +38,7 @@ std::string Dir::HotFolder = "";
 std::string Dir::RenderPath = "";
 std::string Dir::DatabasePath = "";
 std::string Dir::OutputFolder = "";
-std::string Dir::CopyFolder = "";
+std::string Dir::EncodeFolder = "";
 
 double Dir::PercentThreshold = 35.0;
 int Dir::ADOBE_VERSION = 2018;
@@ -234,8 +234,8 @@ void UNSAFE::RunOnceProgramSetup(void* data_in, void* data_out, int* ret)
 	Dir::HotFolder = GetAbsoluteDirectory(Dir::HotFolder);
 	StripExtraData(Dir::OutputFolder);
 	Dir::OutputFolder = GetAbsoluteDirectory(Dir::OutputFolder);
-	StripExtraData(Dir::CopyFolder);
-	Dir::CopyFolder = GetAbsoluteDirectory(Dir::CopyFolder);
+	StripExtraData(Dir::EncodeFolder);
+	Dir::EncodeFolder = GetAbsoluteDirectory(Dir::EncodeFolder);
 
 	//seed random time
 	srand((unsigned int)(time(0)));
@@ -259,7 +259,7 @@ void UNSAFE::RunOnceProgramSetup(void* data_in, void* data_out, int* ret)
 			subFolder += "p";
 		}
 
-		std::string outputDirectory = Dir::CopyFolder + "\\" + subFolder;
+		std::string outputDirectory = Dir::EncodeFolder + "\\" + subFolder;
 
 		EnsureSafeExecution(CreateDirectoryUnsafe, &outputDirectory, nullptr);
 	}
@@ -505,7 +505,7 @@ void UNSAFE::AviCleanupUnsafe(void* data_in, void* data_out, int* ret)
 	if (*SuccessfulRender == true)
 	{
 		std::filesystem::path oldFile = aviFileToFind;
-		std::filesystem::path newFile = Dir::CopyFolder + "\\" + *ProjectName + ".avi";
+		std::filesystem::path newFile = Dir::EncodeFolder + "\\" + *ProjectName + ".avi";
 
 		LogFile::WriteToLog("Old filepath: " + aviFileToFind);
 		LogFile::WriteToLog("New filepath: " + newFile.string())
@@ -574,7 +574,7 @@ void UNSAFE::EncodeCleanup(void* data_in, void* data_out, int* ret)
 
 void UNSAFE::DeleteAllLockfilesForProject(void* data_in, void* data_out, int* ret)
 {
-	std::string baseFolder = Dir::CopyFolder + "\\";
+	std::string baseFolder = Dir::EncodeFolder + "\\";
 
 	for (int i = 0; i < Dir::ResolutionsToEncode.size(); i++)
 	{

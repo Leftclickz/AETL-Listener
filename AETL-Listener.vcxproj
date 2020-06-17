@@ -143,7 +143,11 @@ xcopy /y /s /i "$(ProjectDir)ffmpeg\*" "$(ProjectDir)$(Platform)\$(Configuration
       <AdditionalDependencies>libs\libpq.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <PostBuildEvent>
-      <Command>xcopy /y /i /q "$(SolutionDir)$(Platform)\$(Configuration)\AETL-Listener.exe" "$(SolutionDir)EXE\"</Command>
+      <Command>xcopy /y /i /q "$(SolutionDir)$(Platform)\$(Configuration)\AETL-Listener.exe" "$(SolutionDir)EXE\"
+xcopy /y /s /i "$(ProjectDir)dlls\*" "$(SolutionDir)EXE\"
+xcopy /y /s /i "$(ProjectDir)ffmpeg\*" "$(SolutionDir)EXE\ffmpeg\"
+xcopy /y /s /i "$(ProjectDir)dlls\*" "$(ProjectDir)$(Platform)\$(Configuration)\"
+xcopy /y /s /i "$(ProjectDir)ffmpeg\*" "$(ProjectDir)$(Platform)\$(Configuration)\ffmpeg\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

@@ -7,7 +7,7 @@
 
 #define TERMINATE_IF_FAILURE(_FUNC_, _VALONE_, _VALTWO_, _ERR_) if (EnsureSafeExecution(_FUNC_, _VALONE_, _VALTWO_) == false) { LoopExecutionComplete = true; LastThreadRenderProgress = _ERR_;LastThreadExecution = LogFile::ERROR_STUCK_IN_ERROR; return;}
 
-#define AETL_VERSION "0.9b"
+#define AETL_VERSION "0.91c - FFMPEG branch -AVI fix"
 
 using namespace std;
 namespace fs = std::filesystem;
@@ -94,12 +94,12 @@ int main(int argc, char* argv[])
 				ProgramExecutionComplete = true;
 			}
 
-		if (string(argv[i]) == "-c")
+		if (string(argv[i]) == "-e")
 			if (i + 1 < argc)
-				Dir::CopyFolder = string(argv[i + 1]);
+				Dir::EncodeFolder = string(argv[i + 1]);
 			else
 			{
-				std::cout << "-c flag found but no argument." << endl;
+				std::cout << "-e flag found but no argument." << endl;
 				ProgramExecutionComplete = true;
 			}
 
@@ -142,29 +142,42 @@ int main(int argc, char* argv[])
 		}
 	}
 
+	//Catches to see if the input commands are not set
+	{
+		if (Dir::UsingSqlite && Dir::DatabasePath == "")
+		{
+			std::cout << "Sqlite3 requested but database not specified.\n";
+			ProgramExecutionComplete = true;
+		}
+		if (Dir::HotFolder == "")
+		{
+			std::cout << "Hot folder not set properly.\n";
+			ProgramExecutionComplete = true;
+		}
+		if (Dir::RenderPath == "")
+		{
+			std::cout << "Adobe Render path not set properly. \n";
+			ProgramExecutionComplete = true;
+		}
+		if (Dir::OutputFolder == "")
+		{
+			std::cout << "Output folder path not set properly. \n";
+			ProgramExecutionComplete = true;
+		}
+		if (Dir::ResolutionsToEncode.size() == 0)
+		{
+			std::string out = "Warning: no resolutions supplied in argument list. Will not encode any videos.";
+			std::cout << out << endl;
+			LogFile::WriteToLog(out);
+		}
+		if (Dir::EncodeFolder == "")
+		{
+			std::cout << "Encode folder path not set properly. \n";
+			ProgramExecutionComplete = true;
+		}
+	}
 
-	if (Dir::HotFolder == "")
-	{
-		std::cout << "Hot folder not set properly.\n";
-		ProgramExecutionComplete = true;
-	}
-	if (Dir::RenderPath == "")
-	{
-		std::cout << "Adobe Render path not set properly. \n";
-		ProgramExecutionComplete = true;
-	}
-	if (Dir::OutputFolder == "")
-	{
-		std::cout << "Output folder path not set properly. \n";
-		ProgramExecutionComplete = true;
-	}
-	if (Dir::ResolutionsToEncode.size() == 0)
-	{
-		std::string out = "Warning: no resolutions supplied in argument list. Will not encode any videos.";
-		std::cout << out << endl;
-		LogFile::WriteToLog(out);
-	}
-
+	//Load whichever database we're using
 	if (Dir::UsingSqlite)
 	{
 		if (SQL::SQL_LoadDatabase(&Project::OUR_DATABASE, Dir::DatabasePath) == false)
@@ -616,7 +629,7 @@ void VideoRenderUpdateLoop()
 				vfCommand += "\"pad=ceil(iw/2)*2:ceil(ih/2)*2\""; //On the off-chance our image isn't divisible by 2 (what h264 needs) we'll round it and add pad space if division makes a hole.
 			}
 
-			std::string outputFile = Dir::CopyFolder + "\\" + outputSubdirectory + "\\" + Project::PROJECT_NAME + ".lock";
+			std::string outputFile = Dir::EncodeFolder + "\\" + outputSubdirectory + "\\" + Project::PROJECT_NAME + ".lock";
 
 			//EXAMPLE FORMAT
 			std::string command = "\"" + ffmpegExeLocation + "\" -i \"" + aviFileLocation + "\" -preset veryfast -pix_fmt yuv420p " + vfCommand + " -f mp4 \"" + outputFile + "\"";
@@ -668,6 +681,13 @@ void VideoRenderUpdateLoop()
 
 		//Now we end the encoding sequence
 		LogFile::WriteToLog("---------- END OF FFMPEG ENCODING SEQUENCE ----------");
+
+		//Delete the AVI file now that its served its purpose
+		{
+			LogFile::WriteToLog("Deleting AVI file...");
+			bool success = false;
+			EnsureSafeExecution(AviCleanupUnsafe, &Project::PROJECT_NAME, &success);
+		}
 
 		//wipe the project data since we successfully rendered.
 		Project::Reset();
@@ -803,7 +823,7 @@ void CleanupRenderMess()
 				vfCommand += "\"pad=ceil(iw/2)*2:ceil(ih/2)*2\""; //On the off-chance our image isn't divisible by 2 (what h264 needs) we'll round it and add pad space if division makes a hole.
 			}
 
-			std::string outputFile = Dir::CopyFolder + "\\" + outputSubdirectory + "\\" + Project::PROJECT_NAME + ".lock";
+			std::string outputFile = Dir::EncodeFolder + "\\" + outputSubdirectory + "\\" + Project::PROJECT_NAME + ".lock";
 
 			//EXAMPLE FORMAT
 			std::string command = "\"" + ffmpegExeLocation + "\" -i \"" + aviFileLocation + "\" -preset veryfast -pix_fmt yuv420p " + vfCommand + " -f mp4 \"" + outputFile + "\"";
@@ -850,6 +870,12 @@ void CleanupRenderMess()
 
 		//Now we end the encoding sequence
 		LogFile::WriteToLog("---------- END OF FFMPEG ENCODING SEQUENCE ----------");
+
+
+		//Delete the AVI file now that its served its purpose
+		LogFile::WriteToLog("Deleting AVI file...");
+		bool success = false;
+		EnsureSafeExecution(AviCleanupUnsafe, &Project::PROJECT_NAME, &success);
 	}
 		break;
 	case LogFile::DURING_ENCODE:
