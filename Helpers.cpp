@@ -45,6 +45,8 @@ int Dir::ADOBE_VERSION = 2018;
 
 bool Dir::UsingSqlite = false;
 
+std::vector<std::string> Dir::ResolutionsToEncode;
+
 void FindAndReplaceAll(std::string& data, std::string toSearch, std::string replaceStr)
 {
 	// Get the first occurrence
@@ -246,6 +248,22 @@ void UNSAFE::RunOnceProgramSetup(void* data_in, void* data_out, int* ret)
 	dir = Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY;
 	EnsureSafeExecution(CreateDirectoryUnsafe, &dir);
 
+	//Make all encoding folders if needed
+	for (int i = 0; i < Dir::ResolutionsToEncode.size(); i++)
+	{
+		std::string subFolder = Dir::ResolutionsToEncode[i];
+
+		//Is this string a number? Add a p if so
+		if (!subFolder.empty() && std::all_of(subFolder.begin(), subFolder.end(), ::isdigit))
+		{
+			subFolder += "p";
+		}
+
+		std::string outputDirectory = Dir::CopyFolder + "\\" + subFolder;
+
+		EnsureSafeExecution(CreateDirectoryUnsafe, &outputDirectory, nullptr);
+	}
+
 	*ret = 0;
 }
 
@@ -314,6 +332,13 @@ void UNSAFE::AdjustActiveRenderingDataUnsafe(void* data_in, void* data_out, int*
 		if (Project::RENDER_DATA.Status == "FAILED")
 		{
 			pSQL += ",\"Status\"='ERROR'";
+			pSQL += ",\"VideoRendered\"='0000-00-00 00:00:00'";
+		}
+
+		else if (Project::RENDER_DATA.Status == "COMPLETE")
+		{
+			pSQL += ",\"Status\"='INCOMPLETE'";
+			pSQL += ",\"VideoRendered\"=CURRENT_TIMESTAMP";
 		}
 
 		pSQL += " WHERE \"Name\"='" + Project::PROJECT_NAME + "';";
@@ -338,7 +363,8 @@ void UNSAFE::AddActiveRenderingDataUnsafe(void* data_in, void* data_out, int* re
 	}
 	else
 	{
-		(void)PGSQL::Query("UPDATE public.\"" + std::string(DATABASE_PROJECT_LOG) + "\" SET \"Retries\"=" + std::to_string(Project::RENDER_DATA.Retries) + ", UpdatedAt=CURRENT_TIMESTAMP;", AETL_DB);
+		(void)PGSQL::Query("UPDATE public.\"" + std::string(DATABASE_PROJECT_LOG) + "\" SET \"Retries\"=" + std::to_string(Project::RENDER_DATA.Retries) + ", \"UpdatedAt\"=CURRENT_TIMESTAMP"
+			+ " WHERE \"Name\"='" + Project::PROJECT_NAME + "';", AETL_DB);
 	}
 	*ret = 0;
 }
@@ -367,7 +393,8 @@ void UNSAFE::AddRenderLogUnsafe(void* data_in, void* data_out, int* ret)
 	}
 	else
 	{
-		(void)PGSQL::Query("UPDATE public.\"" + std::string(DATABASE_PROJECT_LOG) + "\" SET \"VideoRendered\"=CURRENT_TIMESTAMP, \"UpdatedAt\"=CURRENT_TIMESTAMP;", AETL_DB);
+		(void)PGSQL::Query("UPDATE public.\"" + std::string(DATABASE_PROJECT_LOG) + "\" SET \"VideoRendered\"=CURRENT_TIMESTAMP, \"UpdatedAt\"=CURRENT_TIMESTAMP"
+			+ " WHERE \"Name\"='" + Project::PROJECT_NAME + "';", AETL_DB);
 	}
 	
 	*ret = 0;
@@ -507,6 +534,44 @@ void UNSAFE::AviCleanupUnsafe(void* data_in, void* data_out, int* ret)
 	}
 }
 
+void UNSAFE::EncodeCleanup(void* data_in, void* data_out, int* ret)
+{
+	string* VideoLocation = (string*)(data_in);
+	bool* SuccessfulRender = (bool*)(data_out);
+
+	bool exists = true;
+	EnsureSafeExecution(ObjectExistsUnsafe, VideoLocation, &exists);
+
+	//If the render was successful then rename the file (to unlock it) and leave
+	if (*SuccessfulRender)
+	{
+		std::filesystem::path oldFile = *VideoLocation;
+		std::filesystem::path newFile = VideoLocation->substr(0, VideoLocation->find(".lock")) + ".mp4";
+
+		LogFile::WriteToLog("Old filepath: " + oldFile.string());
+		LogFile::WriteToLog("New filepath: " + newFile.string())
+			;
+		EnsureSafeExecution(RenameFileUnsafe, &oldFile, &newFile);
+		LogFile::WriteToLog("mp4 file " + oldFile.string() + " moved to " + newFile.string() + ".");
+		return;
+	}
+
+	//If we didnt successfully render then cleanup the file 
+	if (exists == true)
+		if (remove(VideoLocation->c_str()) == 0)
+		{
+			cout << VideoLocation << " deleted." << endl << endl;
+			LogFile::WriteToLog("mp4 file " + *VideoLocation + " deleted");
+		}
+		else
+		{
+			cout << VideoLocation << " attempted to delete but failed." << endl << endl;
+			LogFile::WriteToLog("mp4 file " + *VideoLocation + " failed to be deleted.");
+		}
+	else
+		LogFile::WriteToLog("mp4 file not found for deletion.");
+}
+
 void UNSAFE::GetDirectoryIterator(void* data_in, void* data_out, int* ret)
 {
 	if (data_in == nullptr)
@@ -555,7 +620,7 @@ void UNSAFE::AttemptVideoRender(void* data_in, void* data_out, int* ret)
 	if (data_in == nullptr)
 	{
 		cout << "AttemptVideoRender failed: data_in is nullptr" << endl;
-		LogFile::WriteToLog("CreateOutpoutLogUnsafe failed: data_in is nullptr");
+		LogFile::WriteToLog("AttemptVideoRender failed: data_in is nullptr");
 		*ret = -1;
 		return;
 	}
@@ -579,6 +644,40 @@ void UNSAFE::AttemptVideoRender(void* data_in, void* data_out, int* ret)
 	{
 		cout << "aerender exception caught. Adobe rendering stopped unexpectedly." << endl;
 		LogFile::WriteToLog("aerender exception caught. Adobe rendering stopped unexpectedly.");
+	}
+
+	*ret = 0;
+}
+
+void UNSAFE::AttemptVideoEncode(void* data_in, void* data_out, int* ret)
+{
+	if (data_in == nullptr)
+	{
+		cout << "AttemptVideoEncode failed: data_in is nullptr" << endl;
+		LogFile::WriteToLog("AttemptVideoEncode failed: data_in is nullptr");
+		*ret = -1;
+		return;
+	}
+
+	string* command = (string*)(data_in);
+
+	try
+	{
+		kGUICallThread ProcessHandle;
+		ProcessHandle.Start(command->c_str(), CALLTHREAD_READ);
+
+		//get the render output
+		std::string out = *ProcessHandle.GetString();
+		cout << out;
+		ProcessHandle.Stop();
+
+		string* output = (string*)(data_out);
+		*output = out;
+	}
+	catch (const std::exception&)
+	{
+		cout << "ffmpeg exception caught. ffmpeg stopped unexpectedly." << endl;
+		LogFile::WriteToLog("ffmpeg exception caught. ffmpeg stopped unexpectedly.");
 	}
 
 	*ret = 0;

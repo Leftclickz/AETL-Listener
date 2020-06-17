@@ -36,6 +36,7 @@ public:
 		PROJECT_AVI_MIGRATED = 4,
 		PROJECT_FILED_ARCHIVED = 5,
 		FULL_RENDER = 6,
+		DURING_ENCODE = 7
 	};
 
 private:

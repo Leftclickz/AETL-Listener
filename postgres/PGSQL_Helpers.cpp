@@ -140,8 +140,8 @@ SQL::ProjectSQLData PGSQL::GetProjectBuildLog(std::string ProjectDirectory, std:
 		data.ProjectType = "GENERIC";
 	}
 
-	data.ProjectID = ProjectDirectory.substr(0, 2);
-	data.LocationID = ProjectDirectory.substr(3, 2);
+	data.ProjectID = ProjectDirectory.substr(0, ProjectDirectory.find('-'));
+	data.LocationID = ProjectDirectory.substr(ProjectDirectory.find('-') + 1, 2);
 
 
 	//We can figure out a lot from just the project name alone but we need to find out the image type and thats stored in the database.
@@ -175,34 +175,26 @@ SQL::RenderData PGSQL::GetActiveRenderingLog(std::string ProjectDirectory, std::
 	data.LocationID = Project::SQL_DATA.LocationID;
 	data.ProjectID = Project::SQL_DATA.ProjectID;
 	data.ProjectType = Project::SQL_DATA.ProjectType;
+	data.Status = "INCOMPLETE";
 
 	//Get our info again
-	std::string pSQL = "SELECT * FROM public.\"ProjectBuildLog\" WHERE \"Name\"='" + ProjectDirectory + "';";
+	std::string pSQL = "SELECT * FROM public.\"ProjectBuildLog\" WHERE \"Name\"='" + Project::PROJECT_NAME + "';";
 	pqxx::result res = ConnectionsMap[ConnectionName].Query(pSQL, false);
 
 	if (res.size() == 0)
 	{
-		data.Status = "INCOMPLETE";
 		data.Retries = 0;
 		data.CreatedAt = CurrentDateTime();
 		return data;
 	}
 
-	if (res[0]["\"VideoRendered\""].is_null())
-	{
-		data.Status = "INCOMPLETE";
-	}
-	else if (res[0]["\"VideoRendered\""].c_str() == "0000-00-00 00:00:00")
+	data.Retries = atoi(res[0]["\"Retries\""].c_str());
+	data.CreatedAt = res[0]["\"CreatedAt\""].c_str();
+
+	if (data.Retries > 0)
 	{
 		data.Status = "RETRY";
 	}
-	else
-	{
-		data.Status = "INCOMPLETE";
-	}
-
-	data.Retries = atoi(res[0]["\"Retries\""].c_str());
-	data.CreatedAt = res[0]["\"CreatedAt\""].c_str();
 
 	return data;
 }

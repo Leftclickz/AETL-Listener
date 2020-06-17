@@ -38,6 +38,8 @@ public:
 
 	static int ADOBE_VERSION;
 	static bool UsingSqlite;
+
+	static std::vector<std::string> ResolutionsToEncode;
 };
 
 #define ENSURE_DRIVE_SAFETY while (DrivesAreAccessible() == false) SLEEP(10000);;
@@ -119,11 +121,15 @@ namespace UNSAFE
 
 	void AviCleanupUnsafe(void* data_in, void* data_out, int* ret);
 
+	void EncodeCleanup(void* data_in, void* data_out, int* ret);
+
 	void GetDirectoryIterator(void* data_in, void* data_out, int* ret);
 
 	void CreateOutputLogUnsafe(void* data_filename, void* data_to_write, int* ret);
 
 	void AttemptVideoRender(void* data_in, void* data_out, int* ret);
+
+	void AttemptVideoEncode(void* data_in, void* data_out, int* ret);
 
 	void FreeSpaceAvailable(void* data_in, void* data_out, int* ret);
 

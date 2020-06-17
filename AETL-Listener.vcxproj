@@ -98,6 +98,10 @@
       <SubSystem>Console</SubSystem>
       <AdditionalDependencies>libs\libpq.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
+    <PostBuildEvent>
+      <Command>xcopy /y /s /i "$(ProjectDir)dlls\*" "$(ProjectDir)$(Platform)\$(Configuration)\"
+xcopy /y /s /i "$(ProjectDir)ffmpeg\*" "$(ProjectDir)$(Platform)\$(Configuration)\ffmpeg\"</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>

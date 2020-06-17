@@ -19,6 +19,9 @@ void VideoRenderUpdateLoop();
 //Check if we're allowed to work
 bool CheckToSeeIfHotFolderIsLocked();
 
+//Get our FFMPEG location
+std::string GetFFMPEGAbsoluteLocation();
+
 //Listen for a character input to exit
 void ListenForExit();
 
@@ -39,14 +42,6 @@ int main(int argc, char* argv[])
 	std::cout << "Press Escape to initiate shutdown at any time." << endl << endl;
 
 	LogFile::BeginLogging();
-
-	//there isnt enough args, get out
-	if (argc != 13)
-	{
-		LogFile::WriteToLog("Argument count not correct. " + to_string(argc) + " found. Expected 13.");
-		std::cout << "Argument count not correct.\n";
-		ProgramExecutionComplete = true;
-	}
 
 	//load our hot folder from arguments
 	for (int i = 0; i < argc; i++)
@@ -122,6 +117,29 @@ int main(int argc, char* argv[])
 			std::cout << "Using SQLite3." << endl;
 			Dir::UsingSqlite = true;
 		}
+
+		if (string(argv[i]) == "-res")
+		{
+			if (i + 1 < argc)
+			{
+				std::string argList = argv[i + 1];
+
+				//Get the delimited list
+				while (argList.find(',') != std::string::npos)
+				{
+					Dir::ResolutionsToEncode.push_back(argList.substr(0, argList.find(',')));
+					argList = argList.substr(argList.find(',') + 1);
+				}
+
+				//Add final one
+				Dir::ResolutionsToEncode.push_back(argList);
+			}
+			else
+			{
+				std::cout << "-res flag found but no argument." << endl;
+				ProgramExecutionComplete = true;
+			}
+		}
 	}
 
 
@@ -134,6 +152,17 @@ int main(int argc, char* argv[])
 	{
 		std::cout << "Adobe Render path not set properly. \n";
 		ProgramExecutionComplete = true;
+	}
+	if (Dir::OutputFolder == "")
+	{
+		std::cout << "Output folder path not set properly. \n";
+		ProgramExecutionComplete = true;
+	}
+	if (Dir::ResolutionsToEncode.size() == 0)
+	{
+		std::string out = "Warning: no resolutions supplied in argument list. Will not encode any videos.";
+		std::cout << out << endl;
+		LogFile::WriteToLog(out);
 	}
 
 	if (Dir::UsingSqlite)
@@ -393,7 +422,7 @@ void VideoRenderUpdateLoop()
 				LogFile::WriteToLog("Project " + Project::PROJECT_NAME + ": Adjusting project data entry - Status from RETRY to RENDERING.");
 				Project::RENDER_DATA.Status = "RENDERING";
 
-				//Notify the SQLite database we are attempting a retry
+				//Notify the database we are attempting a retry
 				TERMINATE_IF_FAILURE(AdjustActiveRenderingDataUnsafe, nullptr, nullptr, LogFile::ATTACHED_PROJECT);
 			}
 			else
@@ -409,7 +438,7 @@ void VideoRenderUpdateLoop()
 				Project::RENDER_DATA.Directory = Project::SQL_DATA.Directory;
 				Project::RENDER_DATA.Status = "RENDERING";
 
-				//Add a new entry to the SQLite database
+				//Add/adjust entry to the database
 				TERMINATE_IF_FAILURE(AddActiveRenderingDataUnsafe, nullptr, nullptr, LogFile::ATTACHED_PROJECT);
 			}
 		}
@@ -497,45 +526,59 @@ void VideoRenderUpdateLoop()
 		LogFile::WriteToLog("Adding host name to output log.");
 		AppendHostName(out);
 
-		//Store all the data in either archive or fail based on log info
-		if (Project::RENDER_DATA.Status != "RETRY")
-		{
-			//Make the post-render folder
-			LogFile::WriteToLog("Creating post-render folder " + Project::FINAL_RENDER_FILEPATH);
-			TERMINATE_IF_FAILURE(CreateDirectoryUnsafe, &Project::FINAL_RENDER_FILEPATH, nullptr, LogFile::POST_RENDER);
 
-			//Move the file over
-			LogFile::WriteToLog("Moving project file to post-render folder.");
-			fs::path returnPath = fs::path(Project::FINAL_RENDER_FILEPATH + "\\" + Project::TIMESTAMPED_FILENAME);
-			TERMINATE_IF_FAILURE(RenameFileUnsafe, &Project::CURRENT_PROJECT_PATH, &returnPath, LogFile::POST_RENDER);
-
-			//Create the output log for review.
-			LogFile::WriteToLog("Creating output log.");
-			string outputLogDirectory = Project::FINAL_RENDER_FILEPATH + "\\" + Project::TIMESTAMPED_FILENAME;
-			TERMINATE_IF_FAILURE(CreateOutputLogUnsafe, &outputLogDirectory, &out, LogFile::PROJECT_FILED_ARCHIVED);
-			LogFile::WriteToLog("Output log created.");
-
-			//clean up adobes mess
-			LogFile::WriteToLog("Moving Adobe logs to post-render folder (ONLY FOR VERSIONS 2019 OR LATER).");
-			for (unsigned int i = 0; i < aeLogs.size(); i++)
-			{
-				fs::path oldFile = Project::CURRENT_RENDERING_DIRECTORY + "\\" + Project::TIMESTAMPED_FILENAME + " Logs" + "\\" + aeLogs[i];
-				fs::path newFile = Project::FINAL_RENDER_FILEPATH + "\\" + aeLogs[i];
-				LogFile::WriteToLog("Renaming " + oldFile.string() + " to " + newFile.string());
-				TERMINATE_IF_FAILURE(RenameFileUnsafe, &oldFile, &newFile, LogFile::PROJECT_FILED_ARCHIVED);
-			}
-
-			//add our log to the render list and adjust the active render log we input earlier to be finished
-			LogFile::WriteToLog("Adding SQLite Database Completed Render log.");
-			TERMINATE_IF_FAILURE(AddRenderLogUnsafe, &Project::FINAL_RENDER_FILEPATH, nullptr, LogFile::PROJECT_FILED_ARCHIVED);
-		}
-		//if this is a retry then move the project file back into the project hot folder
-		else
+		//If the status is retry then we failed rendering so we can't encode any AVI file. Time to cleanup and leave.
+		if (Project::RENDER_DATA.Status == "RETRY")
 		{
 			LogFile::WriteToLog("Moving project to hot folder for retry.");
 			fs::path backToHotFolder = fs::path(Dir::HotFolder + "\\" + Project::PROJECT_NAME + ".aep");
 			TERMINATE_IF_FAILURE(RenameFileUnsafe, &Project::CURRENT_PROJECT_PATH, &backToHotFolder, LogFile::POST_RENDER);
+
+			//adjust our active rendering log
+			LogFile::WriteToLog("Adjusting SQLite Database Active Rendering log.");
+			TERMINATE_IF_FAILURE(AdjustActiveRenderingDataUnsafe, nullptr, nullptr, LogFile::PROJECT_FILED_ARCHIVED);
+
+			//cleanup the working directory
+			LogFile::WriteToLog("Removing rendering directory and anything within.");
+			TERMINATE_IF_FAILURE(RemoveDirectoryUnsafe, &Project::CURRENT_RENDERING_DIRECTORY, nullptr, LogFile::FULL_RENDER);
+			LogFile::WriteToLog("---------- END OF AE RENDER SEQUENCE ----------");
+
+
+			//wipe the project data since we successfully completed a loop.
+			Project::Reset();
+
+			LoopExecutionComplete = true;
+			return;
 		}
+
+		//Make the post-render folder
+		LogFile::WriteToLog("Creating post-render folder " + Project::FINAL_RENDER_FILEPATH);
+		TERMINATE_IF_FAILURE(CreateDirectoryUnsafe, &Project::FINAL_RENDER_FILEPATH, nullptr, LogFile::POST_RENDER);
+
+		//Move the file over
+		LogFile::WriteToLog("Moving project file to post-render folder.");
+		fs::path returnPath = fs::path(Project::FINAL_RENDER_FILEPATH + "\\" + Project::TIMESTAMPED_FILENAME);
+		TERMINATE_IF_FAILURE(RenameFileUnsafe, &Project::CURRENT_PROJECT_PATH, &returnPath, LogFile::POST_RENDER);
+
+		//Create the output log for review.
+		LogFile::WriteToLog("Creating output log.");
+		string outputLogDirectory = Project::FINAL_RENDER_FILEPATH + "\\" + Project::TIMESTAMPED_FILENAME;
+		TERMINATE_IF_FAILURE(CreateOutputLogUnsafe, &outputLogDirectory, &out, LogFile::PROJECT_FILED_ARCHIVED);
+		LogFile::WriteToLog("Output log created.");
+
+		//clean up adobes mess
+		LogFile::WriteToLog("Moving Adobe logs to post-render folder (ONLY FOR VERSIONS 2019 OR LATER).");
+		for (unsigned int i = 0; i < aeLogs.size(); i++)
+		{
+			fs::path oldFile = Project::CURRENT_RENDERING_DIRECTORY + "\\" + Project::TIMESTAMPED_FILENAME + " Logs" + "\\" + aeLogs[i];
+			fs::path newFile = Project::FINAL_RENDER_FILEPATH + "\\" + aeLogs[i];
+			LogFile::WriteToLog("Renaming " + oldFile.string() + " to " + newFile.string());
+			TERMINATE_IF_FAILURE(RenameFileUnsafe, &oldFile, &newFile, LogFile::PROJECT_FILED_ARCHIVED);
+		}
+
+		//add our log to the render list and adjust the active render log we input earlier to be finished
+		LogFile::WriteToLog("Adding SQLite Database Completed Render log.");
+		TERMINATE_IF_FAILURE(AddRenderLogUnsafe, &Project::FINAL_RENDER_FILEPATH, nullptr, LogFile::PROJECT_FILED_ARCHIVED);
 
 		//adjust our active rendering log
 		LogFile::WriteToLog("Adjusting SQLite Database Active Rendering log.");
@@ -546,6 +589,65 @@ void VideoRenderUpdateLoop()
 		TERMINATE_IF_FAILURE(RemoveDirectoryUnsafe, &Project::CURRENT_RENDERING_DIRECTORY, nullptr, LogFile::FULL_RENDER);
 		LogFile::WriteToLog("---------- END OF AE RENDER SEQUENCE ----------");
 
+
+		//Now we start the encoding sequence
+		LogFile::WriteToLog("---------- START OF FFMPEG ENCODING SEQUENCE ----------");
+
+		std::string ffmpegExeLocation = GetFFMPEGAbsoluteLocation();
+		std::string aviFileLocation = Dir::OutputFolder + "\\" + Project::PROJECT_NAME + ".avi";
+
+		//Perform the encoding process for each resolution specified in the argument list
+		for (int i = 0; i < Dir::ResolutionsToEncode.size(); i++)
+		{
+			std::string outputSubdirectory = Dir::ResolutionsToEncode[i];
+			//Is this string a number? Add a p if so
+			if (!outputSubdirectory.empty() && std::all_of(outputSubdirectory.begin(), outputSubdirectory.end(), ::isdigit))
+			{
+				outputSubdirectory += "p";
+			}
+
+			std::string outputFile = Dir::CopyFolder + "\\" + outputSubdirectory + "\\" + Project::PROJECT_NAME + ".lock";
+
+			//EXAMPLE FORMAT
+			//1080p - ffmpeg.exe -i {input file path} -preset veryfast -pix_fmt yuv420p -vf scale=-2:1080 -f mp4 {output path}
+			std::string command = "\"" + ffmpegExeLocation + "\" -i \"" + aviFileLocation + "\" -preset veryfast -pix_fmt yuv420p -vf scale=-2:" + Dir::ResolutionsToEncode[i]
+				+ " -f mp4 \"" + outputFile + "\"";
+
+			//encode the video
+			std::string out;
+			LogFile::WriteToLog("Executing command: " + command);
+			TERMINATE_IF_FAILURE(AttemptVideoEncode, &command, &out, LogFile::DURING_ENCODE);
+
+			//placeholder, we figure out if it succeeded once we know how 'out' is specified
+			bool succeded = true;
+
+			//Display outcome to user
+			std::string encodeResponse = succeded ? "Encoded video " + outputFile + " successful." : "Encoded video " + outputFile + " failed.";
+			std::cout << encodeResponse << std::endl;
+			LogFile::WriteToLog(encodeResponse);
+
+			//Handle cleaning up the file
+			TERMINATE_IF_FAILURE(EncodeCleanup, &outputFile, &succeded, LogFile::DURING_ENCODE);
+
+			//It should never fail encoding a video if the AVI generated by aerender is clean. So if this actually happens somehow we need to completely scrap this project.
+			if (succeded == false)
+			{
+				//Set us as failed now and re-update the database with this newly discovered failure
+				Project::RENDER_DATA.Status = "FAILED";
+				TERMINATE_IF_FAILURE(AdjustActiveRenderingDataUnsafe, nullptr, nullptr, LogFile::DURING_ENCODE);
+
+				//Delete the AVI file.
+				LogFile::WriteToLog("Deleting AVI file...");
+				TERMINATE_IF_FAILURE(AviCleanupUnsafe, &Project::PROJECT_NAME, &succeded, LogFile::DURING_ENCODE);
+
+				Project::Reset();
+				LoopExecutionComplete = true;
+				return;
+			}
+		}
+
+		//Now we end the encoding sequence
+		LogFile::WriteToLog("---------- END OF FFMPEG ENCODING SEQUENCE ----------");
 
 		//wipe the project data since we successfully rendered.
 		Project::Reset();
@@ -673,6 +775,50 @@ bool CheckToSeeIfHotFolderIsLocked()
 	}
 
 	return isLocked;
+}
+
+std::string GetFFMPEGAbsoluteLocation()
+{
+	std::vector<char> buf(1024, 0);
+	std::vector<char>::size_type size = buf.size();
+
+	bool havePath = false;
+	bool shouldContinue = true;
+	do
+	{
+		//Fill buffer with the character list of our exe path
+		DWORD result = GetModuleFileNameA(nullptr, &buf[0], (DWORD)size);
+		DWORD lastError = GetLastError();
+		if (result == 0)
+		{
+			shouldContinue = false;
+		}
+		else if (result < size)
+		{
+			havePath = true;
+			shouldContinue = false;
+		}
+		else if (
+			result == size
+			&& (lastError == ERROR_INSUFFICIENT_BUFFER || lastError == ERROR_SUCCESS)
+			)
+		{
+			size *= 2;
+			buf.resize(size);
+		}
+		else
+		{
+			shouldContinue = false;
+		}
+	} while (shouldContinue);
+
+	//Location of exe
+	std::string absLocation = &buf[0];
+	
+	//Folder exists in same location as exe so simply strip off the EXE name and add the directory
+	std::string ffmpegLocation = absLocation.substr(0, absLocation.find("AETL-Listener.exe")) + "ffmpeg\\bin\\ffmpeg.exe";
+
+	return ffmpegLocation;
 }
 
 void ListenForExit()
