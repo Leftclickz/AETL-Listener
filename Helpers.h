@@ -123,6 +123,8 @@ namespace UNSAFE
 
 	void EncodeCleanup(void* data_in, void* data_out, int* ret);
 
+	void DeleteAllLockfilesForProject(void* data_in, void* data_out, int* ret);
+
 	void GetDirectoryIterator(void* data_in, void* data_out, int* ret);
 
 	void CreateOutputLogUnsafe(void* data_filename, void* data_to_write, int* ret);

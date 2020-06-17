@@ -572,6 +572,42 @@ void UNSAFE::EncodeCleanup(void* data_in, void* data_out, int* ret)
 		LogFile::WriteToLog("mp4 file not found for deletion.");
 }
 
+void UNSAFE::DeleteAllLockfilesForProject(void* data_in, void* data_out, int* ret)
+{
+	std::string baseFolder = Dir::CopyFolder + "\\";
+
+	for (int i = 0; i < Dir::ResolutionsToEncode.size(); i++)
+	{
+		std::string outputSubdirectory = Dir::ResolutionsToEncode[i];
+
+		//Is this string a number? Add a p if so
+		if (!outputSubdirectory.empty() && std::all_of(outputSubdirectory.begin(), outputSubdirectory.end(), ::isdigit))
+		{
+			outputSubdirectory += "p";
+		}
+
+		//Only delete lockfiles since those are likely incomplete. The mp4s can stay
+		std::string lockFile = baseFolder + outputSubdirectory + "\\" + Project::PROJECT_NAME + ".lock";
+
+		bool exists = true;
+		EnsureSafeExecution(ObjectExistsUnsafe, &lockFile, &exists);
+
+		if (exists)
+			if (remove(lockFile.c_str()) == 0)
+			{
+				cout << lockFile << " deleted." << endl << endl;
+				LogFile::WriteToLog("locked file " + lockFile + " deleted");
+			}
+			else
+			{
+				cout << lockFile << " attempted to delete but failed." << endl << endl;
+				LogFile::WriteToLog("locked file " + lockFile + " failed to be deleted.");
+			}
+		else
+			LogFile::WriteToLog("locked file not found for deletion.");
+	}
+}
+
 void UNSAFE::GetDirectoryIterator(void* data_in, void* data_out, int* ret)
 {
 	if (data_in == nullptr)
@@ -603,7 +639,7 @@ void UNSAFE::CreateOutputLogUnsafe(void* data_filename, void* data_to_write, int
 	}
 
 	string* filepath = (string*)(data_filename);
-	std::ofstream output(*filepath + FAIL_FILE);
+	std::ofstream output(*filepath);
 
 	string* data = (string*)(data_to_write);
 
