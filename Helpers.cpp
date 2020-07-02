@@ -34,18 +34,19 @@ void Project::Reset()
 	RENDER_DATA.Reset();
 }
 
-std::string Dir::HotFolder = "";
-std::string Dir::RenderPath = "";
-std::string Dir::DatabasePath = "";
-std::string Dir::OutputFolder = "";
-std::string Dir::EncodeFolder = "";
+std::string Settings::HotFolder = "";
+std::string Settings::RenderPath = "";
+std::string Settings::DatabasePath = "";
+std::string Settings::OutputFolder = "";
+std::string Settings::EncodeFolder = "";
 
-double Dir::PercentThreshold = 35.0;
-int Dir::ADOBE_VERSION = 2018;
+double Settings::PercentThreshold = 35.0;
+int Settings::ADOBE_VERSION = 2018;
 
-bool Dir::UsingSqlite = false;
+bool Settings::UsingSqlite = false;
+bool Settings::IsTestMode = false;
 
-std::vector<std::string> Dir::ResolutionsToEncode;
+std::vector<std::string> Settings::ResolutionsToEncode;
 
 void FindAndReplaceAll(std::string& data, std::string toSearch, std::string replaceStr)
 {
@@ -190,8 +191,8 @@ bool EnsureSafeExecution(void(*FUNC) (void*, void*, int*), void* data_in, void* 
 
 bool DrivesAreAccessible()
 {
-	string outputDrive = Dir::OutputFolder.substr(0, Dir::OutputFolder.find("\\") + 1);
-	string sourceDrive = Dir::HotFolder.substr(0, Dir::OutputFolder.find("\\") + 1);
+	string outputDrive = Settings::OutputFolder.substr(0, Settings::OutputFolder.find("\\") + 1);
+	string sourceDrive = Settings::HotFolder.substr(0, Settings::OutputFolder.find("\\") + 1);
 
 	unsigned int outputRet = GetDriveTypeA(outputDrive.c_str());
 	unsigned int sourceRet = GetDriveTypeA(sourceDrive.c_str());
@@ -230,28 +231,28 @@ void StripExtraData(string& Directory)
 void UNSAFE::RunOnceProgramSetup(void* data_in, void* data_out, int* ret)
 {
 	//check folder arguments and adjust format
-	StripExtraData(Dir::HotFolder);
-	Dir::HotFolder = GetAbsoluteDirectory(Dir::HotFolder);
-	StripExtraData(Dir::OutputFolder);
-	Dir::OutputFolder = GetAbsoluteDirectory(Dir::OutputFolder);
-	StripExtraData(Dir::EncodeFolder);
-	Dir::EncodeFolder = GetAbsoluteDirectory(Dir::EncodeFolder);
+	StripExtraData(Settings::HotFolder);
+	Settings::HotFolder = GetAbsoluteDirectory(Settings::HotFolder);
+	StripExtraData(Settings::OutputFolder);
+	Settings::OutputFolder = GetAbsoluteDirectory(Settings::OutputFolder);
+	StripExtraData(Settings::EncodeFolder);
+	Settings::EncodeFolder = GetAbsoluteDirectory(Settings::EncodeFolder);
 
 	//seed random time
 	srand((unsigned int)(time(0)));
 
 	//create an archive folder if it doesnt exist
-	string dir = Dir::HotFolder + "\\" + ARCHIVE_DIRECTORY;
+	string dir = Settings::HotFolder + "\\" + ARCHIVE_DIRECTORY;
 	EnsureSafeExecution(CreateDirectoryUnsafe, &dir);
-	dir = Dir::HotFolder + "\\" + FAIL_DIRECTORY;
+	dir = Settings::HotFolder + "\\" + FAIL_DIRECTORY;
 	EnsureSafeExecution(CreateDirectoryUnsafe, &dir);
-	dir = Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY;
+	dir = Settings::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY;
 	EnsureSafeExecution(CreateDirectoryUnsafe, &dir);
 
 	//Make all encoding folders if needed
-	for (int i = 0; i < Dir::ResolutionsToEncode.size(); i++)
+	for (int i = 0; i < Settings::ResolutionsToEncode.size(); i++)
 	{
-		std::string subFolder = Dir::ResolutionsToEncode[i];
+		std::string subFolder = Settings::ResolutionsToEncode[i];
 
 		//Is this string a number? Add a p if so
 		if (!subFolder.empty() && std::all_of(subFolder.begin(), subFolder.end(), ::isdigit))
@@ -259,7 +260,7 @@ void UNSAFE::RunOnceProgramSetup(void* data_in, void* data_out, int* ret)
 			subFolder += "p";
 		}
 
-		std::string outputDirectory = Dir::EncodeFolder + "\\" + subFolder;
+		std::string outputDirectory = Settings::EncodeFolder + "\\" + subFolder;
 
 		EnsureSafeExecution(CreateDirectoryUnsafe, &outputDirectory, nullptr);
 	}
@@ -269,7 +270,7 @@ void UNSAFE::RunOnceProgramSetup(void* data_in, void* data_out, int* ret)
 
 void UNSAFE::FetchProjectBuildLogUnsafe(void* data_in, void* data_out, int* ret)
 {
-	if (Dir::UsingSqlite)
+	if (Settings::UsingSqlite)
 	{
 		try
 		{
@@ -292,7 +293,7 @@ void UNSAFE::FetchProjectBuildLogUnsafe(void* data_in, void* data_out, int* ret)
 
 void UNSAFE::CollectActiveRenderingDataUnsafe(void* data_in, void* data_out, int* ret)
 {
-	if (Dir::UsingSqlite)
+	if (Settings::UsingSqlite)
 	{
 		try
 		{
@@ -313,7 +314,7 @@ void UNSAFE::CollectActiveRenderingDataUnsafe(void* data_in, void* data_out, int
 
 void UNSAFE::AdjustActiveRenderingDataUnsafe(void* data_in, void* data_out, int* ret)
 {
-	if (Dir::UsingSqlite)
+	if (Settings::UsingSqlite)
 	{
 		try
 		{
@@ -350,7 +351,7 @@ void UNSAFE::AdjustActiveRenderingDataUnsafe(void* data_in, void* data_out, int*
 
 void UNSAFE::AddActiveRenderingDataUnsafe(void* data_in, void* data_out, int* ret)
 {
-	if (Dir::UsingSqlite)
+	if (Settings::UsingSqlite)
 	{
 		try
 		{
@@ -380,7 +381,7 @@ void UNSAFE::AddRenderLogUnsafe(void* data_in, void* data_out, int* ret)
 
 	string FolderToCreate = *(string*)(data_in);
 
-	if (Dir::UsingSqlite)
+	if (Settings::UsingSqlite)
 	{
 		try
 		{
@@ -498,14 +499,14 @@ void UNSAFE::AviCleanupUnsafe(void* data_in, void* data_out, int* ret)
 	string* ProjectName = (string*)(data_in);
 	bool* SuccessfulRender = (bool*)(data_out);
 
-	string aviFileToFind = Dir::OutputFolder + "\\" + *ProjectName + ".avi";
+	string aviFileToFind = Settings::OutputFolder + "\\" + *ProjectName + ".avi";
 
 	LogFile::WriteToLog("Cleaning up AVI file.");
 
 	if (*SuccessfulRender == true)
 	{
 		std::filesystem::path oldFile = aviFileToFind;
-		std::filesystem::path newFile = Dir::EncodeFolder + "\\" + *ProjectName + ".avi";
+		std::filesystem::path newFile = Settings::EncodeFolder + "\\" + *ProjectName + ".avi";
 
 		LogFile::WriteToLog("Old filepath: " + aviFileToFind);
 		LogFile::WriteToLog("New filepath: " + newFile.string())
@@ -572,13 +573,13 @@ void UNSAFE::EncodeCleanup(void* data_in, void* data_out, int* ret)
 		LogFile::WriteToLog("mp4 file not found for deletion.");
 }
 
-void UNSAFE::DeleteAllLockfilesForProject(void* data_in, void* data_out, int* ret)
+void UNSAFE::DeleteAllEncodedVideosForProject(void* data_in, void* data_out, int* ret)
 {
-	std::string baseFolder = Dir::EncodeFolder + "\\";
+	std::string baseFolder = Settings::EncodeFolder + "\\";
 
-	for (int i = 0; i < Dir::ResolutionsToEncode.size(); i++)
+	for (int i = 0; i < Settings::ResolutionsToEncode.size(); i++)
 	{
-		std::string outputSubdirectory = Dir::ResolutionsToEncode[i];
+		std::string outputSubdirectory = Settings::ResolutionsToEncode[i];
 
 		//Is this string a number? Add a p if so
 		if (!outputSubdirectory.empty() && std::all_of(outputSubdirectory.begin(), outputSubdirectory.end(), ::isdigit))
@@ -587,7 +588,7 @@ void UNSAFE::DeleteAllLockfilesForProject(void* data_in, void* data_out, int* re
 		}
 
 		//Only delete lockfiles since those are likely incomplete. The mp4s can stay
-		std::string lockFile = baseFolder + outputSubdirectory + "\\" + Project::PROJECT_NAME + ".lock";
+		std::string lockFile = baseFolder + outputSubdirectory + "\\" + Project::PROJECT_NAME + ".mp4";
 
 		bool exists = true;
 		EnsureSafeExecution(ObjectExistsUnsafe, &lockFile, &exists);
@@ -760,8 +761,8 @@ void UNSAFE::FreeSpaceAvailable(void* data_in, void* data_out, int* ret)
 
 void UNSAFE::CheckIfDrivesAreAccessible(void* data_in, void* data_out, int* ret)
 {
-	string outputDrive = Dir::OutputFolder.substr(0, Dir::OutputFolder.find("\\") + 1);
-	string sourceDrive = Dir::HotFolder.substr(0, Dir::OutputFolder.find("\\") + 1);
+	string outputDrive = Settings::OutputFolder.substr(0, Settings::OutputFolder.find("\\") + 1);
+	string sourceDrive = Settings::HotFolder.substr(0, Settings::OutputFolder.find("\\") + 1);
 
 	unsigned int outputRet = GetDriveTypeA(outputDrive.c_str());
 	unsigned int sourceRet = GetDriveTypeA(sourceDrive.c_str());
@@ -792,7 +793,7 @@ void UNSAFE::CheckIfDrivesAreAccessible(void* data_in, void* data_out, int* ret)
 void UNSAFE::IsHotFolderLocked(void* data_in, void* data_out, int* ret)
 {
 	std::error_code ec;
-	bool isLocked = filesystem::exists(Dir::HotFolder + "\\" + LISTENER_FILE_NAME, ec);
+	bool isLocked = filesystem::exists(Settings::HotFolder + "\\" + LISTENER_FILE_NAME, ec);
 
 	//check all files in the directory
 	if (isLocked)
@@ -805,6 +806,34 @@ void UNSAFE::IsHotFolderLocked(void* data_in, void* data_out, int* ret)
 
 	bool* out = static_cast<bool*>(data_out);
 	*out = isLocked;
+
+	*ret = 0;
+}
+
+void UNSAFE::CopyCurlFolderToSource(void* data_in, void* data_out, int* ret)
+{
+	//Get the filename of our exe
+	char buf[MAX_PATH];
+	GetModuleFileNameA(nullptr, buf, MAX_PATH);
+
+	//Get the relative path of where curl should be installed
+	auto curlPath = std::filesystem::absolute(buf).parent_path().string() + "\\curl\\*";
+
+	//Create the copy command
+	std::string command = "\"xcopy /y /s /i \"O:\\AETL-Output\\Installers\\curl\\*\" \"" + curlPath + "\" \"";
+	wstring wCommand(command.begin(), command.end());
+
+	CStringA res = AETL_Upload::ExecCmd(wCommand.c_str());
+
+	//TODO: somehow determine if it worked
+	bool copyConfirmed = true;
+
+	//pass the result if they care
+	if (data_out != nullptr)
+	{
+		bool* result = static_cast<bool*>(data_out);
+		*result = copyConfirmed;
+	}
 
 	*ret = 0;
 }

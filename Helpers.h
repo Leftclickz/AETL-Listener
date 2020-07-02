@@ -26,7 +26,7 @@ public:
 	static void Reset();
 };
 
-class Dir
+class Settings
 {
 public:
 	static std::string HotFolder;//the folder we watch
@@ -34,10 +34,12 @@ public:
 	static std::string DatabasePath;//path to the database
 	static std::string OutputFolder;//path to the output folder
 	static std::string EncodeFolder;//path to the AETL-Encoder
+
 	static double PercentThreshold;//threshold to use
 
 	static int ADOBE_VERSION;
 	static bool UsingSqlite;
+	static bool IsTestMode;
 
 	static std::vector<std::string> ResolutionsToEncode;
 };
@@ -123,7 +125,7 @@ namespace UNSAFE
 
 	void EncodeCleanup(void* data_in, void* data_out, int* ret);
 
-	void DeleteAllLockfilesForProject(void* data_in, void* data_out, int* ret);
+	void DeleteAllEncodedVideosForProject(void* data_in, void* data_out, int* ret);
 
 	void GetDirectoryIterator(void* data_in, void* data_out, int* ret);
 
@@ -138,6 +140,8 @@ namespace UNSAFE
 	void CheckIfDrivesAreAccessible(void* data_in, void* data_out, int* ret);
 
 	void IsHotFolderLocked(void* data_in, void* data_out, int* ret);
+
+	void CopyCurlFolderToSource(void* data_in, void* data_out, int* ret);
 }
 
 //Remove extra data

@@ -7,10 +7,16 @@
 #endif
 #pragma comment(lib, "Ws2_32.lib")
 
+//internet connection library
+#pragma comment(lib,"Wininet.lib")
+
 //libpq
 #include <pqxx/pqxx>
 
+#include <atlstr.h>
+
 //personal files
+#include "AETL_Uploading.h"
 #include "Helpers.h"
 #include "LogFile.h"
 #include "postgres/DatabaseConnection.h"

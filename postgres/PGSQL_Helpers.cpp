@@ -129,7 +129,7 @@ SQL::ProjectSQLData PGSQL::GetProjectBuildLog(std::string ProjectDirectory, std:
 
 	//Strip the directory so we see which project we're fetching.
 	FindAndReplaceAll(ProjectDirectory, ".aep", "");
-	FindAndReplaceAll(ProjectDirectory, Dir::HotFolder + "\\", "");
+	FindAndReplaceAll(ProjectDirectory, Settings::HotFolder + "\\", "");
 
 	if (ProjectDirectory.find("MONTHLY") != std::string::npos)
 	{

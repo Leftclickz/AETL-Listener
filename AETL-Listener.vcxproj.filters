@@ -25,6 +25,9 @@
     <Filter Include="Postgres">
       <UniqueIdentifier>{572a7310-c4fc-4929-8c12-f3e9a95c4722}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Uploading">
+      <UniqueIdentifier>{da83a211-6a5c-4c4e-8673-db9c796c4d19}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -54,6 +57,9 @@
     <ClCompile Include="ListenerPCH.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="AETL_Uploading.cpp">
+      <Filter>Uploading</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="kguithread.h">
@@ -79,6 +85,9 @@
     </ClInclude>
     <ClInclude Include="ListenerPCH.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AETL_Uploading.h">
+      <Filter>Uploading</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

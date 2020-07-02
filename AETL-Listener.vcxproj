@@ -100,7 +100,8 @@
     </Link>
     <PostBuildEvent>
       <Command>xcopy /y /s /i "$(ProjectDir)dlls\*" "$(ProjectDir)$(Platform)\$(Configuration)\"
-xcopy /y /s /i "$(ProjectDir)ffmpeg\*" "$(ProjectDir)$(Platform)\$(Configuration)\ffmpeg\"</Command>
+xcopy /y /s /i "$(ProjectDir)ffmpeg\*" "$(ProjectDir)$(Platform)\$(Configuration)\ffmpeg\"
+xcopy /y /s /i "$(ProjectDir)curl\*" "$(ProjectDir)$(Platform)\$(Configuration)\curl\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -146,11 +147,13 @@ xcopy /y /s /i "$(ProjectDir)ffmpeg\*" "$(ProjectDir)$(Platform)\$(Configuration
       <Command>xcopy /y /i /q "$(SolutionDir)$(Platform)\$(Configuration)\AETL-Listener.exe" "$(SolutionDir)EXE\"
 xcopy /y /s /i "$(ProjectDir)dlls\*" "$(SolutionDir)EXE\"
 xcopy /y /s /i "$(ProjectDir)ffmpeg\*" "$(SolutionDir)EXE\ffmpeg\"
+xcopy /y /s /i "$(ProjectDir)curl\*" "$(SolutionDir)EXE\curl\"
 xcopy /y /s /i "$(ProjectDir)dlls\*" "$(ProjectDir)$(Platform)\$(Configuration)\"
-xcopy /y /s /i "$(ProjectDir)ffmpeg\*" "$(ProjectDir)$(Platform)\$(Configuration)\ffmpeg\"</Command>
+xcopy /y /s /i "$(ProjectDir)curl\*" "$(ProjectDir)$(Platform)\$(Configuration)\curl\"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AETL_Uploading.cpp" />
     <ClCompile Include="Helpers.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Use</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Use</PrecompiledHeader>
@@ -182,6 +185,7 @@ xcopy /y /s /i "$(ProjectDir)ffmpeg\*" "$(ProjectDir)$(Platform)\$(Configuration
     <ClCompile Include="sqllite\SQL_Helpers.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AETL_Uploading.h" />
     <ClInclude Include="Helpers.h" />
     <ClInclude Include="kguithread.h" />
     <ClInclude Include="ListenerPCH.h" />

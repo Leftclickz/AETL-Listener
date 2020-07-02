@@ -2,6 +2,8 @@
 #include <windows.h>
 #include <conio.h>
 #include <fstream>
+#include <WinInet.h>
+
 
 #define RENDER(_PROJECT) "-project \"" + _PROJECT + "\""
 
@@ -48,7 +50,7 @@ int main(int argc, char* argv[])
 	{
 		if (string(argv[i]) == "-i")
 			if (i + 1 < argc)
-				Dir::HotFolder = string(argv[i + 1]);
+				Settings::HotFolder = string(argv[i + 1]);
 			else
 			{
 				std::cout << "-i flag found but no argument." << endl;
@@ -57,10 +59,10 @@ int main(int argc, char* argv[])
 		if (string(argv[i]) == "-ae")
 			if (i + 1 < argc)
 			{
-				Dir::RenderPath = string(argv[i + 1]);
+				Settings::RenderPath = string(argv[i + 1]);
 
 				//get our version. If this find fails then the path is messed up anyway so lets get out.
-				string adobeVersion = Dir::RenderPath.substr(Dir::RenderPath.find("Adobe After Effects CC "), 27);
+				string adobeVersion = Settings::RenderPath.substr(Settings::RenderPath.find("Adobe After Effects CC "), 27);
 
 				if (adobeVersion == "")
 				{
@@ -69,7 +71,7 @@ int main(int argc, char* argv[])
 					ProgramExecutionComplete = true;
 				}
 
-				Dir::ADOBE_VERSION = atoi(adobeVersion.substr(adobeVersion.size() - 4).c_str());
+				Settings::ADOBE_VERSION = atoi(adobeVersion.substr(adobeVersion.size() - 4).c_str());
 			}
 			else
 			{
@@ -78,7 +80,7 @@ int main(int argc, char* argv[])
 			}
 		if (string(argv[i]) == "-db")
 			if (i + 1 < argc)
-				Dir::DatabasePath = string(argv[i + 1]);
+				Settings::DatabasePath = string(argv[i + 1]);
 			else
 			{
 				std::cout << "-db flag found but no argument." << endl;
@@ -87,7 +89,7 @@ int main(int argc, char* argv[])
 
 		if (string(argv[i]) == "-o")
 			if (i + 1 < argc)
-				Dir::OutputFolder = string(argv[i + 1]);
+				Settings::OutputFolder = string(argv[i + 1]);
 			else
 			{
 				std::cout << "-o flag found but no argument." << endl;
@@ -96,7 +98,7 @@ int main(int argc, char* argv[])
 
 		if (string(argv[i]) == "-e")
 			if (i + 1 < argc)
-				Dir::EncodeFolder = string(argv[i + 1]);
+				Settings::EncodeFolder = string(argv[i + 1]);
 			else
 			{
 				std::cout << "-e flag found but no argument." << endl;
@@ -105,7 +107,7 @@ int main(int argc, char* argv[])
 
 		if (string(argv[i]) == "-usage")
 			if (i + 1 < argc)
-				Dir::PercentThreshold = stod(argv[i + 1]);
+				Settings::PercentThreshold = stod(argv[i + 1]);
 			else
 			{
 				std::cout << "-usage flag found but no argument." << endl;
@@ -115,7 +117,7 @@ int main(int argc, char* argv[])
 		if (string(argv[i]) == "-sqlite")
 		{
 			std::cout << "Using SQLite3." << endl;
-			Dir::UsingSqlite = true;
+			Settings::UsingSqlite = true;
 		}
 
 		if (string(argv[i]) == "-res")
@@ -127,12 +129,12 @@ int main(int argc, char* argv[])
 				//Get the delimited list
 				while (argList.find(',') != std::string::npos)
 				{
-					Dir::ResolutionsToEncode.push_back(argList.substr(0, argList.find(',')));
+					Settings::ResolutionsToEncode.push_back(argList.substr(0, argList.find(',')));
 					argList = argList.substr(argList.find(',') + 1);
 				}
 
 				//Add final one
-				Dir::ResolutionsToEncode.push_back(argList);
+				Settings::ResolutionsToEncode.push_back(argList);
 			}
 			else
 			{
@@ -140,37 +142,43 @@ int main(int argc, char* argv[])
 				ProgramExecutionComplete = true;
 			}
 		}
+
+		if (string(argv[i]) == "-test")
+		{
+			Settings::IsTestMode = true;
+			std::cout << "Running in test mode." << std::endl;
+		}
 	}
 
 	//Catches to see if the input commands are not set
 	{
-		if (Dir::UsingSqlite && Dir::DatabasePath == "")
+		if (Settings::UsingSqlite && Settings::DatabasePath == "")
 		{
 			std::cout << "Sqlite3 requested but database not specified.\n";
 			ProgramExecutionComplete = true;
 		}
-		if (Dir::HotFolder == "")
+		if (Settings::HotFolder == "")
 		{
 			std::cout << "Hot folder not set properly.\n";
 			ProgramExecutionComplete = true;
 		}
-		if (Dir::RenderPath == "")
+		if (Settings::RenderPath == "")
 		{
 			std::cout << "Adobe Render path not set properly. \n";
 			ProgramExecutionComplete = true;
 		}
-		if (Dir::OutputFolder == "")
+		if (Settings::OutputFolder == "")
 		{
 			std::cout << "Output folder path not set properly. \n";
 			ProgramExecutionComplete = true;
 		}
-		if (Dir::ResolutionsToEncode.size() == 0)
+		if (Settings::ResolutionsToEncode.size() == 0)
 		{
 			std::string out = "Warning: no resolutions supplied in argument list. Will not encode any videos.";
 			std::cout << out << endl;
 			LogFile::WriteToLog(out);
 		}
-		if (Dir::EncodeFolder == "")
+		if (Settings::EncodeFolder == "")
 		{
 			std::cout << "Encode folder path not set properly. \n";
 			ProgramExecutionComplete = true;
@@ -178,9 +186,9 @@ int main(int argc, char* argv[])
 	}
 
 	//Load whichever database we're using
-	if (Dir::UsingSqlite)
+	if (Settings::UsingSqlite)
 	{
-		if (SQL::SQL_LoadDatabase(&Project::OUR_DATABASE, Dir::DatabasePath) == false)
+		if (SQL::SQL_LoadDatabase(&Project::OUR_DATABASE, Settings::DatabasePath) == false)
 		{
 			std::cout << "Database failed to open" << endl;
 			LogFile::WriteToLog("Database failed to open");
@@ -217,12 +225,12 @@ int main(int argc, char* argv[])
 #endif
 
 	LogFile::WriteToLog(string("Running program with these arguments: ")
-		+ "\n\t\t\tHot folder: " + Dir::HotFolder
-		+ "\n\t\t\tOutput folder: " + Dir::OutputFolder
-		+ "\n\t\t\tRenderer: " + Dir::RenderPath
-		+ "\n\t\t\tAdobe Version: " + to_string(Dir::ADOBE_VERSION)
-		+ "\n\t\t\tMax Percent threshold: " + to_string(Dir::PercentThreshold)
-		+ "\n\t\t\tUsing SQLite3: " + (Dir::UsingSqlite ? "true" : "false")
+		+ "\n\t\t\tHot folder: " + Settings::HotFolder
+		+ "\n\t\t\tOutput folder: " + Settings::OutputFolder
+		+ "\n\t\t\tRenderer: " + Settings::RenderPath
+		+ "\n\t\t\tAdobe Version: " + to_string(Settings::ADOBE_VERSION)
+		+ "\n\t\t\tMax Percent threshold: " + to_string(Settings::PercentThreshold)
+		+ "\n\t\t\tUsing SQLite3: " + (Settings::UsingSqlite ? "true" : "false")
 	);
 
 	LogFile::WriteToLog("Beginning runtime loop.");
@@ -239,11 +247,11 @@ int main(int argc, char* argv[])
 		{
 			//get free space information
 			DiskInfo checkDisk;
-			string outputDrive = Dir::OutputFolder.substr(0, Dir::OutputFolder.find("\\") + 1);
+			string outputDrive = Settings::OutputFolder.substr(0, Settings::OutputFolder.find("\\") + 1);
 			EnsureSafeExecution(UNSAFE::FreeSpaceAvailable, &checkDisk, &outputDrive);
 
 			//if the disk is above usage specified, don't update. wait and try again.
-			if (checkDisk.PercentUsed > Dir::PercentThreshold)
+			if (checkDisk.PercentUsed > Settings::PercentThreshold)
 			{
 				std::cout << "Disk is above capacity. Waiting 1 minute then trying again..." << endl;
 				LogFile::WriteToLog("Disk is above capacity. Waiting 1 minute then trying again...");
@@ -321,7 +329,7 @@ void VideoRenderUpdateLoop()
 	{
 		//create a directory iterator
 		fs::directory_iterator directoryIterator;
-		TERMINATE_IF_FAILURE(GetDirectoryIterator, &Dir::HotFolder, &directoryIterator, LogFile::PRE_RENDER);
+		TERMINATE_IF_FAILURE(GetDirectoryIterator, &Settings::HotFolder, &directoryIterator, LogFile::PRE_RENDER);
 
 		//find a project file 
 		for (const auto& entry : directoryIterator)
@@ -385,7 +393,7 @@ void VideoRenderUpdateLoop()
 		//strip data to have ONLY the project name and store the old path in a temp path
 		fs::path projectPath = fs::path(Project::PROJECT_NAME);
 		FindAndReplaceAll(Project::PROJECT_NAME, ".aep", "");
-		FindAndReplaceAll(Project::PROJECT_NAME, Dir::HotFolder + "\\", "");
+		FindAndReplaceAll(Project::PROJECT_NAME, Settings::HotFolder + "\\", "");
 
 		//Create a stamped filename
 		Project::TIMESTAMP = CurrentDateTime();
@@ -396,30 +404,30 @@ void VideoRenderUpdateLoop()
 		//Create sub folders for this project if they arent already there
 		LogFile::WriteToLog("Creating project sub folders.");
 		{
-			string dir = Dir::HotFolder + "\\" + ARCHIVE_DIRECTORY + "\\" + Project::SQL_DATA.LocationID;
+			string dir = Settings::HotFolder + "\\" + ARCHIVE_DIRECTORY + "\\" + Project::SQL_DATA.LocationID;
 			TERMINATE_IF_FAILURE(CreateDirectoryUnsafe, &dir, nullptr, LogFile::PRE_RENDER);
-			dir = Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + Project::SQL_DATA.LocationID;
+			dir = Settings::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + Project::SQL_DATA.LocationID;
 			TERMINATE_IF_FAILURE(CreateDirectoryUnsafe, &dir, nullptr, LogFile::PRE_RENDER);
-			dir = Dir::HotFolder + "\\" + FAIL_DIRECTORY + "\\" + Project::SQL_DATA.LocationID;
+			dir = Settings::HotFolder + "\\" + FAIL_DIRECTORY + "\\" + Project::SQL_DATA.LocationID;
 			TERMINATE_IF_FAILURE(CreateDirectoryUnsafe, &dir, nullptr, LogFile::PRE_RENDER);
 		}
 
 		//create our new project directory and rename the file
 		{
-			string currentRenderingDirectory = Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + Project::SQL_DATA.LocationID + "\\" + Project::TIMESTAMP;
+			string currentRenderingDirectory = Settings::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + Project::SQL_DATA.LocationID + "\\" + Project::TIMESTAMP;
 			LogFile::WriteToLog("Creating directory : " + currentRenderingDirectory);
 			TERMINATE_IF_FAILURE(CreateDirectoryUnsafe, &currentRenderingDirectory, nullptr, LogFile::PRE_RENDER);
 			Project::CURRENT_RENDERING_DIRECTORY = currentRenderingDirectory;
 		}
 
 		//Attempt to move the project to a controlled active rendering folder that is unique. Update the CURRENT_PROJECT_PATH if successful.
-		fs::path attemptToMoveProjectPath = fs::absolute(Dir::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + Project::SQL_DATA.LocationID + "\\" + Project::TIMESTAMP + "\\" + Project::TIMESTAMPED_FILENAME);
+		fs::path attemptToMoveProjectPath = fs::absolute(Settings::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY + "\\" + Project::SQL_DATA.LocationID + "\\" + Project::TIMESTAMP + "\\" + Project::TIMESTAMPED_FILENAME);
 		LogFile::WriteToLog("Moving project file to " + attemptToMoveProjectPath.string());
 		TERMINATE_IF_FAILURE(RenameFileUnsafe, &projectPath, &attemptToMoveProjectPath, LogFile::PRE_RENDER);
 		Project::CURRENT_PROJECT_PATH = attemptToMoveProjectPath;
 
 		//Add a log to the active rendering table notifying that we're starting a render
-		Project::SQL_DATA.Directory = Dir::OutputFolder + "\\" + Project::PROJECT_NAME + ".avi";
+		Project::SQL_DATA.Directory = Settings::OutputFolder + "\\" + Project::PROJECT_NAME + ".avi";
 		LogFile::WriteToLog("Setting render directory: " + Project::SQL_DATA.Directory);
 
 
@@ -462,7 +470,7 @@ void VideoRenderUpdateLoop()
 		LogFile::WriteToLog("Project " + Project::PROJECT_NAME + " is now being rendered.");
 
 		//render the video
-		std::string command = Dir::RenderPath + " " + RENDER(Project::CURRENT_PROJECT_PATH.string());
+		std::string command = Settings::RenderPath + " " + RENDER(Project::CURRENT_PROJECT_PATH.string());
 		std::string out;
 		LogFile::WriteToLog("Executing command: " + command);
 		TERMINATE_IF_FAILURE(AttemptVideoRender, &command, &out, LogFile::DURING_RENDER);
@@ -473,7 +481,7 @@ void VideoRenderUpdateLoop()
 
 		//copy log names to vector to move to a different location
 		vector<string> aeLogs;
-		if (Dir::ADOBE_VERSION > 2018)
+		if (Settings::ADOBE_VERSION > 2018)
 		{
 			LogFile::WriteToLog("Copying AE log names to be moved later.");
 			{
@@ -495,8 +503,8 @@ void VideoRenderUpdateLoop()
 		if (renderResult == true)
 		{
 			LogFile::WriteToLog("Render successful.");
-			Project::FINAL_RENDER_FILEPATH = Dir::HotFolder + "\\" + ARCHIVE_DIRECTORY + "\\" + Project::SQL_DATA.LocationID + "\\" + Project::TIMESTAMP;
-			Project::SQL_DATA.Directory = Dir::OutputFolder + "\\" + Project::PROJECT_NAME + ".avi";
+			Project::FINAL_RENDER_FILEPATH = Settings::HotFolder + "\\" + ARCHIVE_DIRECTORY + "\\" + Project::SQL_DATA.LocationID + "\\" + Project::TIMESTAMP;
+			Project::SQL_DATA.Directory = Settings::OutputFolder + "\\" + Project::PROJECT_NAME + ".avi";
 			Project::RENDER_DATA.Status = "COMPLETE";
 
 			//Notify user the success is complete.
@@ -512,7 +520,7 @@ void VideoRenderUpdateLoop()
 		else
 		{
 			LogFile::WriteToLog("Render unsuccessful. Check the render output log for more information.");
-			Project::FINAL_RENDER_FILEPATH = Dir::HotFolder + "\\" + FAIL_DIRECTORY + "\\" + Project::SQL_DATA.LocationID + "\\" + Project::TIMESTAMP;
+			Project::FINAL_RENDER_FILEPATH = Settings::HotFolder + "\\" + FAIL_DIRECTORY + "\\" + Project::SQL_DATA.LocationID + "\\" + Project::TIMESTAMP;
 			Project::SQL_DATA.Directory = "NULL";
 
 			if (Project::RENDER_DATA.Retries >= 3)
@@ -545,7 +553,7 @@ void VideoRenderUpdateLoop()
 		if (Project::RENDER_DATA.Status == "RETRY")
 		{
 			LogFile::WriteToLog("Moving project to hot folder for retry.");
-			fs::path backToHotFolder = fs::path(Dir::HotFolder + "\\" + Project::PROJECT_NAME + ".aep");
+			fs::path backToHotFolder = fs::path(Settings::HotFolder + "\\" + Project::PROJECT_NAME + ".aep");
 			TERMINATE_IF_FAILURE(RenameFileUnsafe, &Project::CURRENT_PROJECT_PATH, &backToHotFolder, LogFile::POST_RENDER);
 
 			//adjust our active rendering log
@@ -609,19 +617,22 @@ void VideoRenderUpdateLoop()
 		LogFile::WriteToLog("---------- START OF FFMPEG ENCODING SEQUENCE ----------");
 
 		std::string ffmpegExeLocation = GetFFMPEGAbsoluteLocation();
-		std::string aviFileLocation = Dir::OutputFolder + "\\" + Project::PROJECT_NAME + ".avi";
+		std::string aviFileLocation = Settings::OutputFolder + "\\" + Project::PROJECT_NAME + ".avi";
+
+		std::vector<std::string> generatedVideoFiles;
+		generatedVideoFiles.reserve(Settings::ResolutionsToEncode.size());
 
 		//Perform the encoding process for each resolution specified in the argument list
-		for (int i = 0; i < Dir::ResolutionsToEncode.size(); i++)
+		for (int i = 0; i < Settings::ResolutionsToEncode.size(); i++)
 		{
-			std::string outputSubdirectory = Dir::ResolutionsToEncode[i];
+			std::string outputSubdirectory = Settings::ResolutionsToEncode[i];
 			std::string vfCommand = "-vf ";
 
 			//Is this string a number? Format the vf accordingly
 			if (!outputSubdirectory.empty() && std::all_of(outputSubdirectory.begin(), outputSubdirectory.end(), ::isdigit))
 			{
 				outputSubdirectory += "p";
-				vfCommand += "scale=-2:" + Dir::ResolutionsToEncode[i];
+				vfCommand += "scale=-2:" + Settings::ResolutionsToEncode[i];
 			}
 			else
 			{
@@ -629,7 +640,8 @@ void VideoRenderUpdateLoop()
 				vfCommand += "\"pad=ceil(iw/2)*2:ceil(ih/2)*2\""; //On the off-chance our image isn't divisible by 2 (what h264 needs) we'll round it and add pad space if division makes a hole.
 			}
 
-			std::string outputFile = Dir::EncodeFolder + "\\" + outputSubdirectory + "\\" + Project::PROJECT_NAME + ".lock";
+			std::string outputFile = Settings::EncodeFolder + "\\" + outputSubdirectory + "\\" + Project::PROJECT_NAME + ".mp4";
+			generatedVideoFiles.push_back(outputFile);
 
 			//EXAMPLE FORMAT
 			std::string command = "\"" + ffmpegExeLocation + "\" -i \"" + aviFileLocation + "\" -preset veryfast -pix_fmt yuv420p " + vfCommand + " -f mp4 \"" + outputFile + "\"";
@@ -643,7 +655,7 @@ void VideoRenderUpdateLoop()
 			bool success = ffmpegSTDOUT.find("Error") == std::string::npos;
 
 			//Display outcome to user
-			std::string encodeResponse = success ? "Encoded video " + outputFile + ":" + Dir::ResolutionsToEncode[i] + " successful." : "Encoded video " + outputFile + ":" + Dir::ResolutionsToEncode[i] + " failed.";
+			std::string encodeResponse = success ? "Encoded video " + outputFile + ":" + Settings::ResolutionsToEncode[i] + " successful." : "Encoded video " + outputFile + ":" + Settings::ResolutionsToEncode[i] + " failed.";
 			std::cout << encodeResponse << std::endl;
 			LogFile::WriteToLog(encodeResponse);
 
@@ -655,7 +667,7 @@ void VideoRenderUpdateLoop()
 				LogFile::WriteToLog("Adding host name to output log.");
 				AppendHostName(ffmpegSTDOUT);
 
-				std::string finalOutputFileName = outputLogDirectory + Dir::ResolutionsToEncode[i] + FAIL_FILE;
+				std::string finalOutputFileName = outputLogDirectory + Settings::ResolutionsToEncode[i] + FAIL_FILE;
 				TERMINATE_IF_FAILURE(CreateOutputLogUnsafe, &finalOutputFileName, &ffmpegSTDOUT, LogFile::DURING_ENCODE);
 			}
 
@@ -666,12 +678,13 @@ void VideoRenderUpdateLoop()
 				Project::RENDER_DATA.Status = "FAILED";
 				TERMINATE_IF_FAILURE(AdjustActiveRenderingDataUnsafe, nullptr, nullptr, LogFile::DURING_ENCODE);
 
-				//Delete the AVI file.
+				//Delete the source AVI file.
 				LogFile::WriteToLog("Deleting AVI file...");
 				TERMINATE_IF_FAILURE(AviCleanupUnsafe, &Project::PROJECT_NAME, &success, LogFile::DURING_ENCODE);
 
-				//Try to remove any lockfiles that might be persisting.
-				TERMINATE_IF_FAILURE(DeleteAllLockfilesForProject, nullptr, nullptr, LogFile::DURING_ENCODE);
+				//Try to remove any mp4s that might be persisting.
+				LogFile::WriteToLog("Deleting all potentially encoded project video files...");
+				TERMINATE_IF_FAILURE(DeleteAllEncodedVideosForProject, nullptr, nullptr, LogFile::DURING_ENCODE);
 
 				Project::Reset();
 				LoopExecutionComplete = true;
@@ -679,15 +692,125 @@ void VideoRenderUpdateLoop()
 			}
 		}
 
-		//Now we end the encoding sequence
-		LogFile::WriteToLog("---------- END OF FFMPEG ENCODING SEQUENCE ----------");
-
 		//Delete the AVI file now that its served its purpose
 		{
 			LogFile::WriteToLog("Deleting AVI file...");
 			bool success = false;
 			EnsureSafeExecution(AviCleanupUnsafe, &Project::PROJECT_NAME, &success);
 		}
+
+		//Now we end the encoding sequence
+		LogFile::WriteToLog("---------- END OF FFMPEG ENCODING SEQUENCE ----------");
+
+		//Now we start the upload sequence
+		LogFile::WriteToLog("---------- START OF UPLOAD SEQUENCE ----------");
+
+		auto placeProjectFileBackToHotFolder = []() 
+		{
+			//Move the project back into the hot folder for retry.
+			fs::path backToHotFolder = fs::path(Settings::HotFolder + "\\" + Project::PROJECT_NAME + ".aep");
+			fs::path returnPath = fs::path(Project::FINAL_RENDER_FILEPATH + "\\" + Project::TIMESTAMPED_FILENAME);
+			TERMINATE_IF_FAILURE(RenameFileUnsafe, &returnPath, &backToHotFolder, LogFile::POST_RENDER);
+
+			Project::Reset();
+
+			LoopExecutionComplete = true;
+		};
+
+		//if we made it this far it means we've finished encoding all our videos and now it's time to upload them to the endpoint 1 by 1
+		for (int i = 0; i < generatedVideoFiles.size(); i++)
+		{
+			bool UploadIncomplete = true;
+			int retryCount = 0;
+
+			while (UploadIncomplete)
+			{
+				auto res = AETL_Upload::UploadUsingCurl(std::filesystem::path(generatedVideoFiles[i]), nullptr);
+
+				switch (res)
+				{
+				case AETL_Upload::UploadResponseCodes::SUCCESS:
+					UploadIncomplete = false;
+					break;
+				case AETL_Upload::UploadResponseCodes::FAILED_UPLOAD_FAILED://attempt a ping to google to make sure internet works
+				{
+					bool bConnect = false;
+
+					while (bConnect == false)
+					{
+						char url[128];
+						strcat(url, "http://www.google.com");
+						bConnect = InternetCheckConnection(url, FLAG_ICC_FORCE_CONNECTION, 0);
+
+						std::string res = bConnect ? "Internet ping to google successful." : "Internet ping to google unsuccessful. Attempting again in 1 minute.";
+						std::cout << res << std::endl;
+						LogFile::WriteToLog(res);
+
+						//Only ping once a minute.
+						if (bConnect == false)
+							SLEEP(1000 * 60);
+					}
+				}
+					break;
+				case AETL_Upload::UploadResponseCodes::FAILED_FILE_NOT_DELETED://check if the file is still there and attempt to remove it if so
+				{		
+					bool exists = true;
+					TERMINATE_IF_FAILURE(ObjectExistsUnsafe, &generatedVideoFiles[i], &exists, LogFile::DURING_ENCODE);
+					
+					if (exists)
+						exists = remove(generatedVideoFiles[i].c_str());
+
+					UploadIncomplete = exists;
+				}
+					break;
+				case AETL_Upload::UploadResponseCodes::FAILED_CURL_NOT_INSTALLED:
+					//if curl isn't even there we need to copy curl over and fix it.
+					LogFile::WriteToLog("Attempting to copy curl from AETL...");
+					bool successfulCopy = false;
+					TERMINATE_IF_FAILURE(CopyCurlFolderToSource, nullptr, &successfulCopy, LogFile::DURING_ENCODE);
+
+					//if we didnt copy it then something is really fucked so we're going to put the project back into the hot folder and clean everything up.
+					if (successfulCopy == false)
+					{
+						std::cout << "Failed to copy over curl... aborting process." << std::endl;
+
+						//Try to remove any mp4s that might be persisting.
+						LogFile::WriteToLog("Deleting all potentially encoded project video files...");
+						TERMINATE_IF_FAILURE(DeleteAllEncodedVideosForProject, nullptr, nullptr, LogFile::DURING_ENCODE);
+
+						//We need to remove the video-rendered info we put on this project
+						if (Settings::UsingSqlite == false)
+						{
+							(void)PGSQL::Query("UPDATE public.\"" + std::string(DATABASE_PROJECT_LOG) + "\" SET \"VideoRendered\"=NULL, \"UpdatedAt\"=CURRENT_TIMESTAMP"
+								+ " WHERE \"Name\"='" + Project::PROJECT_NAME + "';", AETL_DB);
+						}
+
+						//remove the project from the archive and exit out
+						placeProjectFileBackToHotFolder();
+						ProgramExecutionComplete = true;
+						return;
+					}
+
+					std::cout << "curl successfully copied. Re-attempting upload." << std::endl;
+					LogFile::WriteToLog("curl successfully copied. Re-attempting upload.");
+					break;
+				}
+
+				//don't go as fast as possible in case a loop happens for a while
+				SLEEP(250);
+			}
+		}
+
+		//if we got here then everything uploaded to where it needed to. We can successfully flag this project as uploaded and complete.
+		if (Settings::UsingSqlite == false)
+		{
+			(void)PGSQL::Query("UPDATE public.\"" + std::string(DATABASE_PROJECT_LOG) + "\" SET \"Uploaded\"=CURRENT_TIMESTAMP, \"UpdatedAt\"=CURRENT_TIMESTAMP, \"Status\"=\"COMPLETE\""
+				+ " WHERE \"Name\"='" + Project::PROJECT_NAME + "';", AETL_DB);
+		}
+
+		LogFile::WriteToLog("---------- END OF UPLOAD SEQUENCE ----------");
+
+
 
 		//wipe the project data since we successfully rendered.
 		Project::Reset();
@@ -710,7 +833,7 @@ void CleanupRenderMess()
 	case LogFile::ATTACHED_PROJECT:		
 	{
 		LogFile::WriteToLog("Cleanup: returning failed project back to hot folder.");
-		fs::path backToHotFolder = fs::path(Dir::HotFolder + "\\" + Project::PROJECT_NAME + ".aep");
+		fs::path backToHotFolder = fs::path(Settings::HotFolder + "\\" + Project::PROJECT_NAME + ".aep");
 
 		if (EnsureSafeExecution(RenameFileUnsafe, &Project::CURRENT_PROJECT_PATH, &backToHotFolder) == false)
 		{
@@ -732,7 +855,7 @@ void CleanupRenderMess()
 	case LogFile::DURING_RENDER:
 	{
 		LogFile::WriteToLog("Cleanup: returning failed project back to hot folder.");
-		fs::path backToHotFolder = fs::path(Dir::HotFolder + "\\" + Project::PROJECT_NAME + ".aep");
+		fs::path backToHotFolder = fs::path(Settings::HotFolder + "\\" + Project::PROJECT_NAME + ".aep");
 
 		if (EnsureSafeExecution(RenameFileUnsafe, &Project::CURRENT_PROJECT_PATH, &backToHotFolder) == false)
 		{
@@ -761,7 +884,7 @@ void CleanupRenderMess()
 		}
 
 		LogFile::WriteToLog("Cleanup: returning failed project back to hot folder.");
-		fs::path backToHotFolder = fs::path(Dir::HotFolder + "\\" + Project::PROJECT_NAME + ".aep");
+		fs::path backToHotFolder = fs::path(Settings::HotFolder + "\\" + Project::PROJECT_NAME + ".aep");
 
 		if (EnsureSafeExecution(RenameFileUnsafe, &Project::CURRENT_PROJECT_PATH, &backToHotFolder) == false)
 		{
@@ -803,19 +926,19 @@ void CleanupRenderMess()
 
 		string outputLogDirectory = Project::FINAL_RENDER_FILEPATH + "\\" + Project::TIMESTAMPED_FILENAME;
 		std::string ffmpegExeLocation = GetFFMPEGAbsoluteLocation();
-		std::string aviFileLocation = Dir::OutputFolder + "\\" + Project::PROJECT_NAME + ".avi";
+		std::string aviFileLocation = Settings::OutputFolder + "\\" + Project::PROJECT_NAME + ".avi";
 
 		//Perform the encoding process for each resolution specified in the argument list
-		for (int i = 0; i < Dir::ResolutionsToEncode.size(); i++)
+		for (int i = 0; i < Settings::ResolutionsToEncode.size(); i++)
 		{
-			std::string outputSubdirectory = Dir::ResolutionsToEncode[i];
+			std::string outputSubdirectory = Settings::ResolutionsToEncode[i];
 			std::string vfCommand = "-vf ";
 
 			//Is this string a number? Format the vf accordingly
 			if (!outputSubdirectory.empty() && std::all_of(outputSubdirectory.begin(), outputSubdirectory.end(), ::isdigit))
 			{
 				outputSubdirectory += "p";
-				vfCommand += "scale=-2:" + Dir::ResolutionsToEncode[i];
+				vfCommand += "scale=-2:" + Settings::ResolutionsToEncode[i];
 			}
 			else
 			{
@@ -823,7 +946,7 @@ void CleanupRenderMess()
 				vfCommand += "\"pad=ceil(iw/2)*2:ceil(ih/2)*2\""; //On the off-chance our image isn't divisible by 2 (what h264 needs) we'll round it and add pad space if division makes a hole.
 			}
 
-			std::string outputFile = Dir::EncodeFolder + "\\" + outputSubdirectory + "\\" + Project::PROJECT_NAME + ".lock";
+			std::string outputFile = Settings::EncodeFolder + "\\" + outputSubdirectory + "\\" + Project::PROJECT_NAME + ".lock";
 
 			//EXAMPLE FORMAT
 			std::string command = "\"" + ffmpegExeLocation + "\" -i \"" + aviFileLocation + "\" -preset veryfast -pix_fmt yuv420p " + vfCommand + " -f mp4 \"" + outputFile + "\"";
@@ -837,7 +960,7 @@ void CleanupRenderMess()
 			bool succeded = ffmpegSTDOUT.find("Error") == std::string::npos;
 
 			//Display outcome to user
-			std::string encodeResponse = succeded ? "Encoded video " + outputFile + ":" + Dir::ResolutionsToEncode[i] + " successful." : "Encoded video " + outputFile + ":" + Dir::ResolutionsToEncode[i] + " failed.";
+			std::string encodeResponse = succeded ? "Encoded video " + outputFile + ":" + Settings::ResolutionsToEncode[i] + " successful." : "Encoded video " + outputFile + ":" + Settings::ResolutionsToEncode[i] + " failed.";
 			std::cout << encodeResponse << std::endl;
 			LogFile::WriteToLog(encodeResponse);
 
@@ -849,7 +972,7 @@ void CleanupRenderMess()
 				LogFile::WriteToLog("Adding host name to output log.");
 				AppendHostName(ffmpegSTDOUT);
 
-				std::string finalOutputFileName = outputLogDirectory + Dir::ResolutionsToEncode[i] + FAIL_FILE;
+				std::string finalOutputFileName = outputLogDirectory + Settings::ResolutionsToEncode[i] + FAIL_FILE;
 				EnsureSafeExecution(CreateOutputLogUnsafe, &finalOutputFileName, &ffmpegSTDOUT);
 			}
 
@@ -886,15 +1009,13 @@ void CleanupRenderMess()
 		Project::RENDER_DATA.Status = "FAILED";
 		EnsureSafeExecution(AdjustActiveRenderingDataUnsafe, nullptr, nullptr);
 
-		//Try to remove any lockfiles that might be persisting.
-		EnsureSafeExecution(DeleteAllLockfilesForProject, nullptr, nullptr);
+		//Try to remove any mp4s that might be persisting.
+		EnsureSafeExecution(DeleteAllEncodedVideosForProject, nullptr, nullptr);
 
 		//Delete the AVI file.
 		LogFile::WriteToLog("Deleting AVI file...");
 		bool success = false;
 		EnsureSafeExecution(AviCleanupUnsafe, &Project::PROJECT_NAME, &success);
-
-		//Attempt to delete all mp4 files that might have been made.
 	}
 	default:
 		return;
@@ -904,7 +1025,7 @@ void CleanupRenderMess()
 
 bool CheckToSeeIfHotFolderIsLocked()
 {
-	bool isLocked = fs::exists(Dir::HotFolder + "\\" + LISTENER_FILE_NAME);
+	bool isLocked = fs::exists(Settings::HotFolder + "\\" + LISTENER_FILE_NAME);
 
 	//check all files in the directory
 	if (isLocked)
