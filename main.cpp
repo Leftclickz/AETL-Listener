@@ -89,6 +89,7 @@ int main(int argc, char* argv[])
 				if (std::filesystem::exists(argv[i + 1]))
 				{
 					Settings::DatabasePath = string(argv[i + 1]);
+					Settings::UsingSqlite = true;
 				}
 				else
 				{
@@ -101,7 +102,6 @@ int main(int argc, char* argv[])
 				std::cout << "-db flag found but no argument." << endl;
 				Settings::ProgramExecutionComplete = true;
 			}
-
 		if (string(argv[i]) == "-o")
 			if (i + 1 < argc)
 				Settings::OutputFolder = string(argv[i + 1]);
@@ -110,7 +110,6 @@ int main(int argc, char* argv[])
 				std::cout << "-o flag found but no argument." << endl;
 				Settings::ProgramExecutionComplete = true;
 			}
-
 		if (string(argv[i]) == "-e")
 			if (i + 1 < argc)
 				Settings::EncodeFolder = string(argv[i + 1]);
@@ -119,7 +118,6 @@ int main(int argc, char* argv[])
 				std::cout << "-e flag found but no argument." << endl;
 				Settings::ProgramExecutionComplete = true;
 			}
-
 		if (string(argv[i]) == "-usage")
 			if (i + 1 < argc)
 				Settings::PercentThreshold = stod(argv[i + 1]);
@@ -128,13 +126,6 @@ int main(int argc, char* argv[])
 				std::cout << "-usage flag found but no argument." << endl;
 				Settings::ProgramExecutionComplete = true;
 			}
-
-		if (string(argv[i]) == "-sqlite")
-		{
-			std::cout << "Using SQLite3." << endl;
-			Settings::UsingSqlite = true;
-		}
-
 		if (string(argv[i]) == "-res")
 		{
 			if (i + 1 < argc)
