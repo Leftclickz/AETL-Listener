@@ -2,8 +2,8 @@
 
 #include <filesystem>
 
-#define DEFAULT_CURL_COMMAND std::string("curl -X PUT -H \"Authorization: " + DEFAULT_TEST_AUTH + "\" -F \"resolution=720p\" -F \"type=MONTHLY\" -F \"year=2019\" -F \"month=11\" -F \"source_file=@MyFile.mp4\" https://ceeplayer.net/v1/locations/88/timelapses/upload/")
-#define DEFAULT_TEST_COMMAND std::string("curl -i -X PUT -H \"Authorization: " + DEFAULT_TEST_AUTH + "\" -F \"resolution=720p\" -F \"type=MONTHLY\" -F \"year=2019\" -F \"month=11\" -F \"source_file=@MyFile.mp4\" https://ceeplayer-testing.ulam.io/v1/locations/1965/timelapses/upload/")
+#define DEFAULT_CURL_COMMAND std::string("curl --insecure -X PUT -H \"Authorization: " + DEFAULT_TEST_AUTH + "\" -F \"resolution=720p\" -F \"type=MONTHLY\" -F \"year=2019\" -F \"month=11\" -F \"source_file=@MyFile.mp4\" https://ceeplayer.net/v1/locations/88/timelapses/upload/")
+#define DEFAULT_TEST_COMMAND std::string("curl --insecure -i -X PUT -H \"Authorization: " + DEFAULT_TEST_AUTH + "\" -F \"resolution=720p\" -F \"type=MONTHLY\" -F \"year=2019\" -F \"month=11\" -F \"source_file=@MyFile.mp4\" https://ceeplayer-testing.ulam.io/v1/locations/1965/timelapses/upload/")
 #define DEFAULT_RES "resolution=720p"
 #define DEFAULT_TYPE "type=MONTHLY"
 #define DEFAULT_YEAR "year=2019"
@@ -43,7 +43,7 @@ namespace AETL_Upload {
 	};
 
 	//The upload command to send data to the endpoint
-	UploadResponseCodes UploadUsingCurl(std::filesystem::path Filepath, std::string AuthKey);
+	UploadResponseCodes UploadUsingCurl(std::filesystem::path Filepath, std::string AuthKey = "");
 
 	//Raw code execution
 	CStringA ExecCmd(const wchar_t* cmd);

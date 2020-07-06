@@ -30,7 +30,6 @@ void ListenForExit();
 //cleanup in case a render fails
 void CleanupRenderMess();
 
-volatile bool ProgramExecutionComplete = false;
 volatile bool LoopExecutionComplete = false;
 
 LogFile::eThreadExecutionCodes LastThreadExecution;
@@ -43,7 +42,10 @@ int main(int argc, char* argv[])
 	std::cout << "VERSION: " << AETL_VERSION << endl;
 	std::cout << "Press Escape to initiate shutdown at any time." << endl << endl;
 
+	//Begin logging. Copy all argument data.
 	LogFile::BeginLogging();
+	for (int i = 0; i < argc; i++)
+		LogFile::WriteToLog(std::string("Argument found: index " + i + std::string(" - ") + argv[i]));
 
 	//load our hot folder from arguments
 	for (int i = 0; i < argc; i++)
@@ -54,7 +56,7 @@ int main(int argc, char* argv[])
 			else
 			{
 				std::cout << "-i flag found but no argument." << endl;
-				ProgramExecutionComplete = true;
+				Settings::ProgramExecutionComplete = true;
 			}
 		if (string(argv[i]) == "-ae")
 			if (i + 1 < argc)
@@ -68,7 +70,7 @@ int main(int argc, char* argv[])
 				{
 					std::cout << "Adobe path given is incorrect. Expected C:\\Program Files\\Adobe\\Adobe After Effects CC XXXX\\Support Files\\aerender.exe where XXXX is the version." << endl
 						<< "Please locate your installation and rerun program with a correct path to it." << endl;
-					ProgramExecutionComplete = true;
+					Settings::ProgramExecutionComplete = true;
 				}
 
 				Settings::ADOBE_VERSION = atoi(adobeVersion.substr(adobeVersion.size() - 4).c_str());
@@ -76,15 +78,25 @@ int main(int argc, char* argv[])
 			else
 			{
 				std::cout << "-ae flag found but no argument." << endl;
-				ProgramExecutionComplete = true;
+				Settings::ProgramExecutionComplete = true;
 			}
 		if (string(argv[i]) == "-db")
 			if (i + 1 < argc)
-				Settings::DatabasePath = string(argv[i + 1]);
+			{
+				if (std::filesystem::exists(argv[i + 1]))
+				{
+					Settings::DatabasePath = string(argv[i + 1]);
+				}
+				else
+				{
+					std::cout << "Supplied database file argument could not be found." << std::endl;
+					LogFile::WriteToLog("Supplied database file argument could not be found.");
+				}
+			}
 			else
 			{
 				std::cout << "-db flag found but no argument." << endl;
-				ProgramExecutionComplete = true;
+				Settings::ProgramExecutionComplete = true;
 			}
 
 		if (string(argv[i]) == "-o")
@@ -93,7 +105,7 @@ int main(int argc, char* argv[])
 			else
 			{
 				std::cout << "-o flag found but no argument." << endl;
-				ProgramExecutionComplete = true;
+				Settings::ProgramExecutionComplete = true;
 			}
 
 		if (string(argv[i]) == "-e")
@@ -102,7 +114,7 @@ int main(int argc, char* argv[])
 			else
 			{
 				std::cout << "-e flag found but no argument." << endl;
-				ProgramExecutionComplete = true;
+				Settings::ProgramExecutionComplete = true;
 			}
 
 		if (string(argv[i]) == "-usage")
@@ -111,7 +123,7 @@ int main(int argc, char* argv[])
 			else
 			{
 				std::cout << "-usage flag found but no argument." << endl;
-				ProgramExecutionComplete = true;
+				Settings::ProgramExecutionComplete = true;
 			}
 
 		if (string(argv[i]) == "-sqlite")
@@ -138,8 +150,8 @@ int main(int argc, char* argv[])
 			}
 			else
 			{
-				std::cout << "-res flag found but no argument." << endl;
-				ProgramExecutionComplete = true;
+				std::cout << "-res flag found but no argument." << std::endl;
+				Settings::ProgramExecutionComplete = true;
 			}
 		}
 
@@ -148,29 +160,104 @@ int main(int argc, char* argv[])
 			Settings::IsTestMode = true;
 			std::cout << "Running in test mode." << std::endl;
 		}
+
+		if (string(argv[i]) == "-forceupload")
+		{
+			if (i + 1 < argc)
+			{
+				//we need to try and parse out the command given to make sure the format works
+				std::string copyArg(argv[i + 1]);
+
+				//expected 20-21 OR 20-21-MONTHLY-2019-09
+				//get the project ID
+				if (copyArg.find('-') == std::string::npos)
+				{
+					std::cout << "Incorrect -forceupload string format. Requires {PID}-{LID} or {PID}-{LID}-MONTHLY-{YEAR}-{MONTH}" << std::endl;
+					LogFile::WriteToLog("Argument format incorrect. Arg: " + copyArg);
+				}
+				else
+					//Copy the project ID into memory
+				{
+					std::string projID = copyArg.substr(0, copyArg.find('-'));
+					if (IsNumber(projID) == false)
+					{
+						std::cout << "Incompatible project ID detected. Must be a number." << std::endl;
+						LogFile::WriteToLog("Argument format incorrect. Incompatible project ID detected. Must be a number. Arg: " + copyArg);
+					}
+					else
+					{
+						Project::RENDER_DATA.ProjectID = projID;
+						copyArg = copyArg.substr(copyArg.find('-') + 1);
+					}
+				}
+
+				//Continue only if ProjectID was loaded successfully
+				if (Project::RENDER_DATA.ProjectID != "")
+				{
+					//Next we determine the LocationID
+
+					//is this a monthly project or a generic one
+					bool IsMonthly = copyArg.find('-') != std::string::npos;
+					std::string locationID;
+
+					if (IsMonthly)
+						locationID = copyArg.substr(0, copyArg.find('-'));
+					else
+						locationID = copyArg;
+
+					if (IsNumber(locationID) == false)
+					{
+						std::cout << "Incompatible location ID detected. Must be a number." << std::endl;
+						LogFile::WriteToLog("Argument format incorrect. Incompatible location ID detected. Must be a number. Arg: " + copyArg);
+					}
+					else
+					{
+						Project::RENDER_DATA.LocationID = locationID;
+						Settings::ForceUploadEnabled = true;
+						Settings::ForceUploadString = argv[i + 1];
+					}
+
+				}
+
+				if (Settings::ForceUploadEnabled)
+				{
+					std::cout << "Forcing upload of all related files of input data: " << argv[i + 1] << std::endl;
+					LogFile::WriteToLog("Forcing upload of all related files of input data: " + std::string(argv[i + 1]));
+				}
+				else
+				{
+					Settings::ProgramExecutionComplete = true;
+				}
+			}
+			else
+			{
+				std::cout << "-forceupload flag found but no argument. Requires {PID}-{LID} or {PID}-{LID}-MONTHLY-{YEAR}-{MONTH}" << std::endl;
+				Settings::ProgramExecutionComplete = true;
+			}
+		}
 	}
 
 	//Catches to see if the input commands are not set
 	{
 		if (Settings::UsingSqlite && Settings::DatabasePath == "")
 		{
-			std::cout << "Sqlite3 requested but database not specified.\n";
-			ProgramExecutionComplete = true;
+			std::cout << "Sqlite3 requested but database not specified Use -db argument to pass a filepath to a valid sqlite3 AETL database.\n";
+			Settings::ProgramExecutionComplete = true;
 		}
-		if (Settings::HotFolder == "")
+		if (Settings::HotFolder == "" && Settings::ForceUploadEnabled == false)
 		{
 			std::cout << "Hot folder not set properly.\n";
-			ProgramExecutionComplete = true;
+			Settings::ProgramExecutionComplete = true;
 		}
-		if (Settings::RenderPath == "")
+		if (Settings::RenderPath == "" && Settings::ForceUploadEnabled == false)
 		{
 			std::cout << "Adobe Render path not set properly. \n";
-			ProgramExecutionComplete = true;
+			Settings::ProgramExecutionComplete = true;
 		}
-		if (Settings::OutputFolder == "")
+		if (Settings::OutputFolder == "" && Settings::ForceUploadEnabled == false)
 		{
 			std::cout << "Output folder path not set properly. \n";
-			ProgramExecutionComplete = true;
+			Settings::ProgramExecutionComplete = true;
 		}
 		if (Settings::ResolutionsToEncode.size() == 0)
 		{
@@ -181,18 +268,18 @@ int main(int argc, char* argv[])
 		if (Settings::EncodeFolder == "")
 		{
 			std::cout << "Encode folder path not set properly. \n";
-			ProgramExecutionComplete = true;
+			Settings::ProgramExecutionComplete = true;
 		}
 	}
 
 	//Load whichever database we're using
-	if (Settings::UsingSqlite)
+	if (Settings::UsingSqlite && Settings::DatabasePath != "")
 	{
 		if (SQL::SQL_LoadDatabase(&Project::OUR_DATABASE, Settings::DatabasePath) == false)
 		{
 			std::cout << "Database failed to open" << endl;
 			LogFile::WriteToLog("Database failed to open");
-			ProgramExecutionComplete = true;
+			Settings::ProgramExecutionComplete = true;
 		}
 		else
 			LogFile::WriteToLog("Database loaded successfully.");
@@ -209,12 +296,12 @@ int main(int argc, char* argv[])
 			std::cerr << e.what() << std::endl;
 
 			LogFile::WriteToLog("Error upon attempting connection: " + std::string(e.what()));
-			ProgramExecutionComplete = true;
+			Settings::ProgramExecutionComplete = true;
 		}
 	}
 
 	//do some run-once stuff before looping forever
-	if (!ProgramExecutionComplete)
+	if (!Settings::ProgramExecutionComplete)
 		EnsureSafeExecution(RunOnceProgramSetup);
 
 #if (_DEBUG)
@@ -233,69 +320,116 @@ int main(int argc, char* argv[])
 		+ "\n\t\t\tUsing SQLite3: " + (Settings::UsingSqlite ? "true" : "false")
 	);
 
-	LogFile::WriteToLog("Beginning runtime loop.");
-
-	//our runtime loop. this will run forever unless exited by pressing the ESCAPE key
-	while (!ProgramExecutionComplete)
+	//Force-upload process
+	if (Settings::ForceUploadEnabled && Settings::ProgramExecutionComplete == false)
 	{
-		//check if the hot folder is locked
-		bool isFolderLocked;
-		EnsureSafeExecution(UNSAFE::IsHotFolderLocked, nullptr, &isFolderLocked);
+		//Get all associated video files that we're forcing an upload onto.
+		std::vector<std::string> uploads;
 
-		//if the folder isnt locked we can continue
-		if (isFolderLocked == false)
+		//first we need to find out folders we're checking out
+		std::string sourceFolder = Settings::EncodeFolder;
+
+		for (int i = 0; i < Settings::ResolutionsToEncode.size(); i++)
 		{
-			//get free space information
-			DiskInfo checkDisk;
-			string outputDrive = Settings::OutputFolder.substr(0, Settings::OutputFolder.find("\\") + 1);
-			EnsureSafeExecution(UNSAFE::FreeSpaceAvailable, &checkDisk, &outputDrive);
+			std::string resolution;
+			if (IsNumber(Settings::ResolutionsToEncode[i]))
+				resolution = Settings::ResolutionsToEncode[i] + "p";
+			else
+				resolution = Settings::ResolutionsToEncode[i];
 
-			//if the disk is above usage specified, don't update. wait and try again.
-			if (checkDisk.PercentUsed > Settings::PercentThreshold)
+			std::string uploadFileCandidate = sourceFolder + "\\" + resolution + "\\" + Settings::ForceUploadString + ".mp4";
+
+			if (std::filesystem::exists(uploadFileCandidate))
 			{
-				std::cout << "Disk is above capacity. Waiting 1 minute then trying again..." << endl;
-				LogFile::WriteToLog("Disk is above capacity. Waiting 1 minute then trying again...");
-				SLEEP(60000);
+				uploads.push_back(uploadFileCandidate);
 			}
 			else
 			{
-				std::cout << "Disk check successful. Printing disk values:" << endl;
-				std::cout << "Total space : " << checkDisk.TotalNumberOfBytes.QuadPart << " bytes" << endl
-					<< "Free space : " << checkDisk.FreeBytesAvailable.QuadPart << " bytes" << endl
-					<< "Free space in GB : " << checkDisk.FreeSpaceInGigaBytes << " GB" << endl
-					<< "Percent used : " << checkDisk.PercentUsed << "%" << endl << endl;
+				std::cout << "Expected file missing. Name: " + uploadFileCandidate << std::endl;
+				std::cout << "Aborting force-upload." << std::endl;
+				LogFile::WriteToLog("Expected file missing. Name: " + uploadFileCandidate);
 
-				LogFile::WriteToLog("Successful disk check. Space available in GB: " + to_string(checkDisk.FreeSpaceInGigaBytes) + ". Percent used: " + to_string(checkDisk.PercentUsed) + ".");
-
-				//the runtime loop body
-
-#if (_DEBUG)
-				std::thread VideoRenderUpdateThread(VideoRenderUpdateLoop);
-#elif (!_DEBUG)
-				std::thread* VideoRenderUpdateThread = new std::thread(VideoRenderUpdateLoop);
-#endif			
-
-				//Wait for the render process to complete.
-				while (LoopExecutionComplete == false)
-				{
-					SLEEP(1000 + rand() % 60000);
-				}
-#if (_DEBUG)
-				VideoRenderUpdateThread.join();
-#elif (!_DEBUG)
-				VideoRenderUpdateThread->join();
-				delete VideoRenderUpdateThread;
-#endif
-
-				LogFile::WriteToLog("Loop execution complete.");
+				Settings::ProgramExecutionComplete = true;
+				break;
 			}
 		}
-	
-		//sleep for 1 second + a random amount between 0-60 seconds
-		SLEEP(1000 + rand() % 60000);
-	}
+		bool successful = false;
+		EnsureSafeExecution(UploadAllSpecifiedFilepaths, &uploads, &successful);
 
-	LogFile::WriteToLog("Ending runtime loop.");
+		if (successful)
+		{
+			std::cout << "Force-upload process successful." << std::endl;
+			LogFile::WriteToLog("Force-upload successful for argument: " + Settings::ForceUploadString);
+		}
+	}
+	//Normal process loop
+	else
+	{
+		LogFile::WriteToLog("Beginning runtime loop.");
+
+		//our runtime loop. this will run forever unless exited by pressing the ESCAPE key
+		while (!Settings::ProgramExecutionComplete)
+		{
+			//check if the hot folder is locked
+			bool isFolderLocked;
+			EnsureSafeExecution(UNSAFE::IsHotFolderLocked, nullptr, &isFolderLocked);
+
+			//if the folder isnt locked we can continue
+			if (isFolderLocked == false)
+			{
+				//get free space information
+				DiskInfo checkDisk;
+				string outputDrive = Settings::OutputFolder.substr(0, Settings::OutputFolder.find("\\") + 1);
+				EnsureSafeExecution(UNSAFE::FreeSpaceAvailable, &checkDisk, &outputDrive);
+
+				//if the disk is above usage specified, don't update. wait and try again.
+				if (checkDisk.PercentUsed > Settings::PercentThreshold)
+				{
+					std::cout << "Disk is above capacity. Waiting 1 minute then trying again..." << endl;
+					LogFile::WriteToLog("Disk is above capacity. Waiting 1 minute then trying again...");
+					SLEEP(60000);
+				}
+				else
+				{
+					std::cout << "Disk check successful. Printing disk values:" << endl;
+					std::cout << "Total space : " << checkDisk.TotalNumberOfBytes.QuadPart << " bytes" << endl
+						<< "Free space : " << checkDisk.FreeBytesAvailable.QuadPart << " bytes" << endl
+						<< "Free space in GB : " << checkDisk.FreeSpaceInGigaBytes << " GB" << endl
+						<< "Percent used : " << checkDisk.PercentUsed << "%" << endl << endl;
+
+					LogFile::WriteToLog("Successful disk check. Space available in GB: " + to_string(checkDisk.FreeSpaceInGigaBytes) + ". Percent used: " + to_string(checkDisk.PercentUsed) + ".");
+
+					//the runtime loop body
+
+#if (_DEBUG)
+					std::thread VideoRenderUpdateThread(VideoRenderUpdateLoop);
+#elif (!_DEBUG)
+					std::thread* VideoRenderUpdateThread = new std::thread(VideoRenderUpdateLoop);
+#endif			
+
+					//Wait for the render process to complete.
+					while (LoopExecutionComplete == false)
+					{
+						SLEEP(1000 + rand() % 60000);
+					}
+#if (_DEBUG)
+					VideoRenderUpdateThread.join();
+#elif (!_DEBUG)
+					VideoRenderUpdateThread->join();
+					delete VideoRenderUpdateThread;
+#endif
+
+					LogFile::WriteToLog("Loop execution complete.");
+				}
+			}
+
+			//sleep for 1 second + a random amount between 0-60 seconds
+			SLEEP(1000 + rand() % 60000);
+		}
+
+		LogFile::WriteToLog("Ending runtime loop.");
+
+	}
 
 #if (_DEBUG)
 	InputListener.join();
@@ -705,108 +839,8 @@ void VideoRenderUpdateLoop()
 		//Now we start the upload sequence
 		LogFile::WriteToLog("---------- START OF UPLOAD SEQUENCE ----------");
 
-		auto placeProjectFileBackToHotFolder = []() 
-		{
-			//Move the project back into the hot folder for retry.
-			fs::path backToHotFolder = fs::path(Settings::HotFolder + "\\" + Project::PROJECT_NAME + ".aep");
-			fs::path returnPath = fs::path(Project::FINAL_RENDER_FILEPATH + "\\" + Project::TIMESTAMPED_FILENAME);
-			TERMINATE_IF_FAILURE(RenameFileUnsafe, &returnPath, &backToHotFolder, LogFile::POST_RENDER);
-
-			Project::Reset();
-
-			LoopExecutionComplete = true;
-		};
-
-		//if we made it this far it means we've finished encoding all our videos and now it's time to upload them to the endpoint 1 by 1
-		for (int i = 0; i < generatedVideoFiles.size(); i++)
-		{
-			bool UploadIncomplete = true;
-			int retryCount = 0;
-
-			while (UploadIncomplete)
-			{
-				auto res = AETL_Upload::UploadUsingCurl(std::filesystem::path(generatedVideoFiles[i]), nullptr);
-
-				switch (res)
-				{
-				case AETL_Upload::UploadResponseCodes::SUCCESS:
-					UploadIncomplete = false;
-					break;
-				case AETL_Upload::UploadResponseCodes::FAILED_UPLOAD_FAILED://attempt a ping to google to make sure internet works
-				{
-					bool bConnect = false;
-
-					while (bConnect == false)
-					{
-						char url[128];
-						strcat(url, "http://www.google.com");
-						bConnect = InternetCheckConnection(url, FLAG_ICC_FORCE_CONNECTION, 0);
-
-						std::string res = bConnect ? "Internet ping to google successful." : "Internet ping to google unsuccessful. Attempting again in 1 minute.";
-						std::cout << res << std::endl;
-						LogFile::WriteToLog(res);
-
-						//Only ping once a minute.
-						if (bConnect == false)
-							SLEEP(1000 * 60);
-					}
-				}
-					break;
-				case AETL_Upload::UploadResponseCodes::FAILED_FILE_NOT_DELETED://check if the file is still there and attempt to remove it if so
-				{		
-					bool exists = true;
-					TERMINATE_IF_FAILURE(ObjectExistsUnsafe, &generatedVideoFiles[i], &exists, LogFile::DURING_ENCODE);
-					
-					if (exists)
-						exists = remove(generatedVideoFiles[i].c_str());
-
-					UploadIncomplete = exists;
-				}
-					break;
-				case AETL_Upload::UploadResponseCodes::FAILED_CURL_NOT_INSTALLED:
-					//if curl isn't even there we need to copy curl over and fix it.
-					LogFile::WriteToLog("Attempting to copy curl from AETL...");
-					bool successfulCopy = false;
-					TERMINATE_IF_FAILURE(CopyCurlFolderToSource, nullptr, &successfulCopy, LogFile::DURING_ENCODE);
-
-					//if we didnt copy it then something is really fucked so we're going to put the project back into the hot folder and clean everything up.
-					if (successfulCopy == false)
-					{
-						std::cout << "Failed to copy over curl... aborting process." << std::endl;
-
-						//Try to remove any mp4s that might be persisting.
-						LogFile::WriteToLog("Deleting all potentially encoded project video files...");
-						TERMINATE_IF_FAILURE(DeleteAllEncodedVideosForProject, nullptr, nullptr, LogFile::DURING_ENCODE);
-
-						//We need to remove the video-rendered info we put on this project
-						if (Settings::UsingSqlite == false)
-						{
-							(void)PGSQL::Query("UPDATE public.\"" + std::string(DATABASE_PROJECT_LOG) + "\" SET \"VideoRendered\"=NULL, \"UpdatedAt\"=CURRENT_TIMESTAMP"
-								+ " WHERE \"Name\"='" + Project::PROJECT_NAME + "';", AETL_DB);
-						}
-
-						//remove the project from the archive and exit out
-						placeProjectFileBackToHotFolder();
-						ProgramExecutionComplete = true;
-						return;
-					}
-
-					std::cout << "curl successfully copied. Re-attempting upload." << std::endl;
-					LogFile::WriteToLog("curl successfully copied. Re-attempting upload.");
-					break;
-				}
-
-				//don't go as fast as possible in case a loop happens for a while
-				SLEEP(250);
-			}
-		}
-
-		//if we got here then everything uploaded to where it needed to. We can successfully flag this project as uploaded and complete.
-		if (Settings::UsingSqlite == false)
-		{
-			(void)PGSQL::Query("UPDATE public.\"" + std::string(DATABASE_PROJECT_LOG) + "\" SET \"Uploaded\"=CURRENT_TIMESTAMP, \"UpdatedAt\"=CURRENT_TIMESTAMP, \"Status\"=\"COMPLETE\""
-				+ " WHERE \"Name\"='" + Project::PROJECT_NAME + "';", AETL_DB);
-		}
+		bool outcome = false;
+		TERMINATE_IF_FAILURE(UploadAllSpecifiedFilepaths, &generatedVideoFiles, &outcome, LogFile::DURING_ENCODE);
 
 		LogFile::WriteToLog("---------- END OF UPLOAD SEQUENCE ----------");
 
@@ -1089,9 +1123,9 @@ void ListenForExit()
 
 		if (val == 0x1B)
 		{
-			std::cout << endl << "Exit has been requested. Finishing up last directive then shutting down." << endl;
-			LogFile::WriteToLog("Exit has been requested. Finishing up last directive then shutting down.");
-			ProgramExecutionComplete = true;
+			std::cout << endl << "Exit has been requested. Finishing up last loop then shutting down." << endl;
+			LogFile::WriteToLog("Exit has been requested. Finishing up last loop then shutting down.");
+			Settings::ProgramExecutionComplete = true;
 			break;
 		}
 	}

@@ -19,8 +19,7 @@ namespace AETL_Upload
 		params.File += GetAbsoluteDirectory(Filepath.string());
 
 		//get resolution from folder name
-		std::string resolution = Filepath.parent_path().string();
-		FindAndReplaceAll(resolution, Settings::HotFolder + "\\", "");
+		std::string resolution = Filepath.parent_path().filename().string();
 		params.Res += resolution;
 
 		//get our filename and a copy stripped of the project ID

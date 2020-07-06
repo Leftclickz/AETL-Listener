@@ -40,8 +40,13 @@ public:
 	static int ADOBE_VERSION;
 	static bool UsingSqlite;
 	static bool IsTestMode;
+	static bool ForceUploadEnabled;
+	static std::string ForceUploadString;
 
 	static std::vector<std::string> ResolutionsToEncode;
+
+	static volatile bool ProgramExecutionComplete;
+	
 };
 
 #define ENSURE_DRIVE_SAFETY while (DrivesAreAccessible() == false) SLEEP(10000);;
@@ -86,6 +91,8 @@ void AppendHostName(std::string& data);
 bool EnsureSafeExecution(void(*FUNC) (void*, void*, int*), void* data_in = nullptr, void* data_out = nullptr);
 
 bool DrivesAreAccessible();
+
+bool IsNumber(std::string& Input);
 
 struct DiskInfo
 {
@@ -142,6 +149,9 @@ namespace UNSAFE
 	void IsHotFolderLocked(void* data_in, void* data_out, int* ret);
 
 	void CopyCurlFolderToSource(void* data_in, void* data_out, int* ret);
+
+	void UploadAllSpecifiedFilepaths(void* data_in, void* data_out, int* ret);
+
 }
 
 //Remove extra data

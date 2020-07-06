@@ -10,7 +10,7 @@
     <LocalDebuggerEnvironment>PATH=C:\Program Files\PostgreSQL\11\lib;C:\Program Files\PostgreSQL\11\bin</LocalDebuggerEnvironment>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <LocalDebuggerCommandArguments>-i "S:\projects" -ae "C:\Program Files\Adobe\Adobe After Effects CC 2018\Support Files\aerender.exe" -o "O:\AETL-Output" -db "S:\db\AETL-DB.aetldb" -c "O:\AETL-AVI COMPLETE" -usage 99.0 -res 480,720,1080</LocalDebuggerCommandArguments>
+    <LocalDebuggerCommandArguments>-i "S:\projects" -ae "C:\Program Files\Adobe\Adobe After Effects CC 2018\Support Files\aerender.exe" -o "O:\AETL-Output" -e "O:\AETL-Encoded" -usage 99.0 -res 480,720,1080 -test -forceupload 1-88</LocalDebuggerCommandArguments>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <LocalDebuggerEnvironment>PATH=C:\Program Files\PostgreSQL\11\lib;C:\Program Files\PostgreSQL\11\bin</LocalDebuggerEnvironment>
   </PropertyGroup>

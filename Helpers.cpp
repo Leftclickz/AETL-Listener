@@ -5,7 +5,7 @@
 #include <filesystem>
 #include <winsock.h>
 #include <iostream>
-
+#include <WinInet.h>
 
 using namespace std;
 
@@ -46,7 +46,12 @@ int Settings::ADOBE_VERSION = 2018;
 bool Settings::UsingSqlite = false;
 bool Settings::IsTestMode = false;
 
+bool Settings::ForceUploadEnabled = false;
+std::string Settings::ForceUploadString = "";
+
 std::vector<std::string> Settings::ResolutionsToEncode;
+
+volatile bool Settings::ProgramExecutionComplete = false;
 
 void FindAndReplaceAll(std::string& data, std::string toSearch, std::string replaceStr)
 {
@@ -214,6 +219,12 @@ bool DrivesAreAccessible()
 	return true;
 }
 
+bool IsNumber(std::string& Input)
+{
+	return !Input.empty() && std::find_if(Input.begin(),
+		Input.end(), [](unsigned char c) { return !std::isdigit(c); }) == Input.end();
+}
+
 void StripExtraData(string& Directory)
 {
 	size_t size = Directory.length();
@@ -231,38 +242,53 @@ void StripExtraData(string& Directory)
 void UNSAFE::RunOnceProgramSetup(void* data_in, void* data_out, int* ret)
 {
 	//check folder arguments and adjust format
-	StripExtraData(Settings::HotFolder);
-	Settings::HotFolder = GetAbsoluteDirectory(Settings::HotFolder);
-	StripExtraData(Settings::OutputFolder);
-	Settings::OutputFolder = GetAbsoluteDirectory(Settings::OutputFolder);
-	StripExtraData(Settings::EncodeFolder);
-	Settings::EncodeFolder = GetAbsoluteDirectory(Settings::EncodeFolder);
+	if (Settings::HotFolder != "")
+	{
+		StripExtraData(Settings::HotFolder);
+		Settings::HotFolder = GetAbsoluteDirectory(Settings::HotFolder);
+	}
+
+	if (Settings::OutputFolder != "")
+	{
+		StripExtraData(Settings::OutputFolder);
+		Settings::OutputFolder = GetAbsoluteDirectory(Settings::OutputFolder);
+	}
+
+	if (Settings::EncodeFolder != "")
+	{
+		StripExtraData(Settings::EncodeFolder);
+		Settings::EncodeFolder = GetAbsoluteDirectory(Settings::EncodeFolder);
+	}
 
 	//seed random time
 	srand((unsigned int)(time(0)));
 
-	//create an archive folder if it doesnt exist
-	string dir = Settings::HotFolder + "\\" + ARCHIVE_DIRECTORY;
-	EnsureSafeExecution(CreateDirectoryUnsafe, &dir);
-	dir = Settings::HotFolder + "\\" + FAIL_DIRECTORY;
-	EnsureSafeExecution(CreateDirectoryUnsafe, &dir);
-	dir = Settings::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY;
-	EnsureSafeExecution(CreateDirectoryUnsafe, &dir);
+	//create all hot folder archiving folders
+	if (Settings::HotFolder != "")
+	{
+		string dir = Settings::HotFolder + "\\" + ARCHIVE_DIRECTORY;
+		EnsureSafeExecution(CreateDirectoryUnsafe, &dir);
+		dir = Settings::HotFolder + "\\" + FAIL_DIRECTORY;
+		EnsureSafeExecution(CreateDirectoryUnsafe, &dir);
+		dir = Settings::HotFolder + "\\" + ACTIVE_RENDER_DIECTORY;
+		EnsureSafeExecution(CreateDirectoryUnsafe, &dir);
+	}
 
 	//Make all encoding folders if needed
-	for (int i = 0; i < Settings::ResolutionsToEncode.size(); i++)
+	if (Settings::EncodeFolder != "")
 	{
-		std::string subFolder = Settings::ResolutionsToEncode[i];
-
-		//Is this string a number? Add a p if so
-		if (!subFolder.empty() && std::all_of(subFolder.begin(), subFolder.end(), ::isdigit))
+		for (int i = 0; i < Settings::ResolutionsToEncode.size(); i++)
 		{
-			subFolder += "p";
+			std::string subFolder = Settings::ResolutionsToEncode[i];
+			if (IsNumber(subFolder))
+			{
+				subFolder += "p";
+			}
+
+			std::string outputDirectory = Settings::EncodeFolder + "\\" + subFolder;
+
+			EnsureSafeExecution(CreateDirectoryUnsafe, &outputDirectory, nullptr);
 		}
-
-		std::string outputDirectory = Settings::EncodeFolder + "\\" + subFolder;
-
-		EnsureSafeExecution(CreateDirectoryUnsafe, &outputDirectory, nullptr);
 	}
 
 	*ret = 0;
@@ -836,4 +862,129 @@ void UNSAFE::CopyCurlFolderToSource(void* data_in, void* data_out, int* ret)
 	}
 
 	*ret = 0;
+}
+
+void UNSAFE::UploadAllSpecifiedFilepaths(void* data_in, void* data_out, int* ret)
+{
+	vector<string>* allUploads = static_cast<std::vector<std::string>*>(data_in);
+	bool* successful = static_cast<bool*>(data_out);
+	*ret = 0;
+
+	namespace fs = std::filesystem;
+
+	if (data_in == nullptr || allUploads == nullptr || data_out == nullptr)
+	{
+		*ret = -1;
+		return;
+	}
+
+
+	auto placeProjectFileBackToHotFolder = [](bool* successFlag)
+	{
+		//Move the project back into the hot folder for retry.
+		fs::path backToHotFolder = fs::path(Settings::HotFolder + "\\" + Project::PROJECT_NAME + ".aep");
+		fs::path returnPath = fs::path(Project::FINAL_RENDER_FILEPATH + "\\" + Project::TIMESTAMPED_FILENAME);
+		EnsureSafeExecution(RenameFileUnsafe, &returnPath, &backToHotFolder);
+
+		Project::Reset();
+	};
+
+	//if we made it this far it means we've finished encoding all our videos and now it's time to upload them to the endpoint 1 by 1
+	for (int i = 0; i < allUploads->size(); i++)
+	{
+		bool UploadIncomplete = true;
+		int retryCount = 0;
+
+		while (UploadIncomplete)
+		{
+			std::string fileToUpload = allUploads->at(i);
+			auto res = AETL_Upload::UploadUsingCurl(std::filesystem::path(fileToUpload));
+
+			switch (res)
+			{
+			case AETL_Upload::UploadResponseCodes::SUCCESS:
+				UploadIncomplete = false;
+				break;
+			case AETL_Upload::UploadResponseCodes::FAILED_UPLOAD_FAILED://attempt a ping to google to make sure internet works
+			{
+				bool bConnect = false;
+
+				while (bConnect == false)
+				{
+					char url[128];
+					strcat(url, "http://www.google.com");
+					bConnect = InternetCheckConnection(url, FLAG_ICC_FORCE_CONNECTION, 0);
+
+					std::string res = bConnect ? "Internet ping to google successful." : "Internet ping to google unsuccessful. Attempting again in 1 minute.";
+					std::cout << res << std::endl;
+					LogFile::WriteToLog(res);
+
+					//Only ping once a minute.
+					if (bConnect == false)
+						SLEEP(1000 * 60);
+				}
+			}
+			break;
+			case AETL_Upload::UploadResponseCodes::FAILED_FILE_NOT_DELETED://check if the file is still there and attempt to remove it if so
+			{
+				bool exists = true;
+				EnsureSafeExecution(ObjectExistsUnsafe, &fileToUpload, &exists);
+
+				if (exists)
+					exists = remove(fileToUpload.c_str());
+
+				UploadIncomplete = exists;
+			}
+			break;
+			case AETL_Upload::UploadResponseCodes::FAILED_CURL_NOT_INSTALLED:
+				//if curl isn't even there we need to copy curl over and fix it.
+				LogFile::WriteToLog("Attempting to copy curl from AETL...");
+				bool successfulCopy = false;
+				EnsureSafeExecution(CopyCurlFolderToSource, nullptr, &successfulCopy);
+
+				//if we didnt copy it then something is really fucked so we're going to put the project back into the hot folder and clean everything up.
+				if (successfulCopy == false)
+				{
+					std::cout << "Failed to copy over curl... aborting process." << std::endl;
+
+					//Try to remove any mp4s that might be persisting.
+					LogFile::WriteToLog("Deleting all potentially encoded project video files...");
+					EnsureSafeExecution(DeleteAllEncodedVideosForProject, nullptr, nullptr);
+
+					//We need to remove the video-rendered info we put on this project
+					if (Settings::UsingSqlite == false)
+					{
+						(void)PGSQL::Query("UPDATE public.\"" + std::string(DATABASE_PROJECT_LOG) + "\" SET \"VideoRendered\"=NULL, \"UpdatedAt\"=CURRENT_TIMESTAMP"
+							+ " WHERE \"Name\"='" + Project::PROJECT_NAME + "';", AETL_DB);
+					}
+
+					//remove the project from the archive and exit out
+					if (Settings::ForceUploadEnabled == false)
+						placeProjectFileBackToHotFolder(successful);
+
+					//This program should probably shut down as it's being told to do something it can't do
+					Settings::ProgramExecutionComplete = true;
+					*successful = false;
+
+					return;
+				}
+
+				std::cout << "curl successfully copied. Re-attempting upload." << std::endl;
+				LogFile::WriteToLog("curl successfully copied. Re-attempting upload.");
+				break;
+			}
+
+			//don't go as fast as possible in case a loop happens for a while
+			SLEEP(250);
+		}
+	}
+
+	//if we got here then everything uploaded to where it needed to. We can successfully flag this project as uploaded and complete.
+	if (Settings::UsingSqlite == false)
+	{
+		(void)PGSQL::Query("UPDATE public.\"" + std::string(DATABASE_PROJECT_LOG) + "\" SET \"Uploaded\"=CURRENT_TIMESTAMP, \"UpdatedAt\"=CURRENT_TIMESTAMP, \"Status\"=\"COMPLETE\""
+			+ " WHERE \"Name\"='" + Project::PROJECT_NAME + "';", AETL_DB);
+	}
+
+	*successful = true;
 }
