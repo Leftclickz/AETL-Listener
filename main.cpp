@@ -45,7 +45,10 @@ int main(int argc, char* argv[])
 	//Begin logging. Copy all argument data.
 	LogFile::BeginLogging();
 	for (int i = 0; i < argc; i++)
-		LogFile::WriteToLog(std::string("Argument found: index " + i + std::string(" - ") + argv[i]));
+	{
+		std::string out = "Argument found: index " + std::to_string(i) + std::string(" - ") + argv[i];
+		LogFile::WriteToLog(out);
+	}
 
 	//load our hot folder from arguments
 	for (int i = 0; i < argc; i++)
